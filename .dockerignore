@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+storage
+public/storage
+prisma/*.db
+prisma/*.db-journal
+.env
+.env.local
+*.log
+Dockerfile
+.dockerignore
+.docker
+README.md

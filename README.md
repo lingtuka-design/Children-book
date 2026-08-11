@@ -142,3 +142,49 @@ src/
   `DATABASE_URL`, then `npx prisma db push` (and reseed if needed).
 - In production, set `AUTH_SECRET` and a strong `ADMIN_PASSWORD`, and use
   HTTPS so session cookies stay secure.
+
+## Deploying to a Node Host (Docker)
+
+The app is a standard Node server (Next.js + Prisma + disk storage) — it runs
+on any host that supports Docker: Railway, Render, Fly.io, DigitalOcean, a
+VPS, etc. It **cannot** run on Cloudflare Workers/Pages because the book
+processing pipeline needs native modules (`sharp`, `@napi-rs/canvas`), a
+filesystem, and a relational database.
+
+```bash
+docker build -t children-book .
+docker run -p 3000:3000 \
+  -e DATABASE_URL="file:/app/prisma/dev.db" \
+  -e AUTH_SECRET="$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")" \
+  -e ADMIN_PASSWORD="change-me" \
+  children-book
+```
+
+On first boot the container creates the database, the admin user, and the
+product config, then serves on port 3000. Add demo books with
+`docker exec <container> npx tsx prisma/seed.ts`.
+
+> **Important:** SQLite keeps its data in a file on the container disk, which
+> is ephemeral on most cloud hosts. On Railway/Render/Fly.io use their managed
+> **PostgreSQL** instead: change `provider = "postgresql"` in
+> `prisma/schema.prisma`, set `DATABASE_URL` to the Postgres URL, and the
+> startup `prisma db push` will build the schema automatically.
+
+### Required environment variables
+
+| Variable         | Notes                                                          |
+| ---------------- | -------------------------------------------------------------- |
+| `DATABASE_URL`   | SQLite `file:...` (local) or PostgreSQL URL (cloud hosts)      |
+| `AUTH_SECRET`    | JWT secret — 64 hex chars                                      |
+| `ADMIN_USERNAME` | default `admin`                                                |
+| `ADMIN_PASSWORD` | **must** be changed in production                              |
+| `PORT`           | default `3000`                                                 |
+
+### Persistent storage volumes
+
+Uploaded books and customer photos are written to disk:
+
+- `public/storage/books/` — book covers, pages, thumbnails (public)
+- `storage/orders/` — customer photos (private)
+
+Mount volumes for both so uploads survive redeploys (e.g. `-v ./data/books:/app/public/storage/books -v ./data/orders:/app/storage/orders`).

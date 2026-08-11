@@ -738,8 +738,18 @@ async function main() {
   console.log(`   ✓ Product: ${product.name} (${product.pageCount} pages / ${product.aspectRatio} / Rs. ${product.price})`);
 
   // 3. Sample books ---------------------------------------------------------
-  const vena = await prisma.book.findUnique({ where: { slug: "vena-and-his-friend-trex" } });
-  if (!vena) {
+  // Set SEED_DEMO_BOOKS=false to skip demo content (useful in containers,
+  // where only the admin user + product config are needed).
+  const seedDemoBooks = process.env.SEED_DEMO_BOOKS !== "false";
+
+  if (!seedDemoBooks) {
+    console.log("   • Skipping demo books (SEED_DEMO_BOOKS=false)");
+  }
+
+  const vena = seedDemoBooks
+    ? await prisma.book.findUnique({ where: { slug: "vena-and-his-friend-t-rex" } })
+    : null;
+  if (seedDemoBooks && !vena) {
     console.log("   • Creating 'Vena and His Friend T-Rex' (PDF pipeline)…");
     const pdf = await venaPdf();
     const result = await processBook({
@@ -759,8 +769,10 @@ async function main() {
     console.log("   • 'Vena and His Friend T-Rex' already exists");
   }
 
-  const cloud = await prisma.book.findUnique({ where: { slug: "the-little-cloud-who-couldnt-rain" } });
-  if (!cloud) {
+  const cloud = seedDemoBooks
+    ? await prisma.book.findUnique({ where: { slug: "the-little-cloud-who-couldnt-rain" } })
+    : null;
+  if (seedDemoBooks && !cloud) {
     console.log("   • Creating 'The Little Cloud Who Couldn't Rain' (JPG pages)…");
     const result = await processBook({
       title: "The Little Cloud Who Couldn't Rain",
@@ -779,8 +791,10 @@ async function main() {
     console.log("   • 'The Little Cloud Who Couldn't Rain' already exists");
   }
 
-  const luna = await prisma.book.findUnique({ where: { slug: "lunas-night-adventure" } });
-  if (!luna) {
+  const luna = seedDemoBooks
+    ? await prisma.book.findUnique({ where: { slug: "lunas-night-adventure" } })
+    : null;
+  if (seedDemoBooks && !luna) {
     console.log("   • Creating 'Luna's Night Adventure' (JPG pages)…");
     const result = await processBook({
       title: "Luna's Night Adventure",

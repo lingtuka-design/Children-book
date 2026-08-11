@@ -158,13 +158,16 @@ export async function processBook(input: ProcessBookInput): Promise<ProcessBookR
       report("thumbs", i + 1, pageBuffers.length);
     }
 
-    // Cover: uploaded cover image, otherwise the first uploaded file
-    // (not the blanked first page).
+    // Cover: uploaded cover image; otherwise the first uploaded file for JPG
+    // books (their front cover — never the blank page 0), or the rendered
+    // first page for PDF books.
     report("cover", 0, 1, "Preparing cover…");
     let coverBuffer: Buffer;
     if (input.cover) {
       await readImageInfo(input.cover.buffer);
       coverBuffer = await optimizeImage(input.cover.buffer, { width: 1800 });
+    } else if (isPdf(files[0])) {
+      coverBuffer = await optimizeImage(pageBuffers[0], { width: 1800 });
     } else {
       const firstFile = sortFilesByNumber(files)[0];
       coverBuffer = await optimizeImage(firstFile.buffer, { width: 1800 });
