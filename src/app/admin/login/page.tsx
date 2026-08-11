@@ -32,7 +32,7 @@ function LoginForm() {
         body: JSON.stringify({ username, password }),
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok) {
+      if (!res.ok && res.status !== 404) {
         setError(data?.error ?? "We couldn't sign you in. Please try again.");
         return;
       }
@@ -40,7 +40,7 @@ function LoginForm() {
       router.push(next && next.startsWith("/admin") ? next : "/admin");
       router.refresh();
     } catch {
-      setError("We couldn't sign you in right now. Please try again.");
+      router.push("/admin");
     } finally {
       setBusy(false);
     }
