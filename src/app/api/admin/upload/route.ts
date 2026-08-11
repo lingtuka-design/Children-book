@@ -59,12 +59,15 @@ export async function POST(req: NextRequest) {
 
   const mimes = rawFiles.map((f) => f.type);
   const isPdf = rawFiles.length === 1 && (mimes[0] === "application/pdf" || rawFiles[0].name.toLowerCase().endsWith(".pdf"));
-  const areJpgs = mimes.every((m) => m === "image/jpeg") || rawFiles.every((f) => /\.jpe?g$/i.test(f.name));
-  if (!isPdf && !areJpgs) {
+  const allowedImages = ["image/jpeg", "image/png", "image/webp"];
+  const areImages =
+    mimes.every((m) => allowedImages.includes(m)) ||
+    rawFiles.every((f) => /\.(jpe?g|png|webp)$/i.test(f.name));
+  if (!isPdf && !areImages) {
     return NextResponse.json(
       {
         error:
-          "Unsupported file type. Upload a single PDF, or JPG/JPEG images — one per book page, in order.",
+          "Unsupported file type. Upload a single PDF, or PNG/JPG/JPEG/WebP images — one per book page, in order.",
       },
       { status: 400 }
     );

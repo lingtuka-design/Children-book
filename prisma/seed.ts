@@ -706,19 +706,28 @@ async function main() {
   console.log("🌱 Seeding Tiny Tales Studio…");
 
   // 1. Admin user -----------------------------------------------------------
+  // Single-admin policy: the account configured in .env is created/kept in
+  // sync (password updates apply), and any other admin users are removed so
+  // only the intended admin can access the console.
   const username = process.env.ADMIN_USERNAME || "admin";
   const password = process.env.ADMIN_PASSWORD || "admin123";
-  const existing = await prisma.adminUser.findUnique({ where: { username } });
-  if (!existing) {
-    await prisma.adminUser.create({
-      data: { username, passwordHash: bcrypt.hashSync(password, 12) },
-    });
-    console.log(`   ✓ Admin user created — username: ${username}`);
-    if (!process.env.ADMIN_PASSWORD) {
-      console.log(`   ⚠ Using default password "${password}". Change ADMIN_PASSWORD in .env!`);
-    }
-  } else {
-    console.log("   • Admin user already exists");
+  const hash = bcrypt.hashSync(password, 12);
+
+  await prisma.adminUser.upsert({
+    where: { username },
+    update: { passwordHash: hash },
+    create: { username, passwordHash: hash },
+  });
+
+  const removed = await prisma.adminUser.deleteMany({
+    where: { username: { not: username } },
+  });
+  if (removed.count > 0) {
+    console.log(`   ✓ Removed ${removed.count} other admin account(s)`);
+  }
+  console.log(`   ✓ Admin user ready — username: ${username}`);
+  if (!process.env.ADMIN_PASSWORD) {
+    console.log(`   ⚠ Using default password "${password}". Change ADMIN_PASSWORD in .env!`);
   }
 
   // 2. Product config -------------------------------------------------------

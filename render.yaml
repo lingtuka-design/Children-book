@@ -7,12 +7,16 @@ services:
     startCommand: npm run start
     envVars:
       - key: NODE_VERSION
-        value: 20.18.0
+        value: "24"
       - key: DATABASE_URL
         value: file:./dev.db
+      # Fill these in the Render dashboard (secrets are not committed):
+      # AUTH_SECRET  — 64 hex chars; generate with:
+      #   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+      # ADMIN_PASSWORD — the admin console password
       - key: AUTH_SECRET
-        value: 7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a
+        value: ""
       - key: ADMIN_USERNAME
-        value: admin
+        value: lingtika
       - key: ADMIN_PASSWORD
-        value: admin123
+        value: ""
