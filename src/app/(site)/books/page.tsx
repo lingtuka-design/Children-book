@@ -14,7 +14,13 @@ export default async function BooksPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  const { page: pageParam } = await searchParams;
+  let pageParam: string | undefined;
+  try {
+    const params = await searchParams;
+    pageParam = params?.page;
+  } catch {
+    pageParam = "1";
+  }
   const page = Math.max(1, Number(pageParam) || 1);
 
   const [total, books] = await Promise.all([

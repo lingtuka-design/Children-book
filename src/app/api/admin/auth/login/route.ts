@@ -9,6 +9,8 @@ import {
   signSession,
 } from "@/lib/auth";
 
+export const revalidate = false;
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => null);

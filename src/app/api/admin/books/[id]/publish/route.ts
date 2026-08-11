@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminMutation } from "@/lib/auth";
 
+export async function generateStaticParams() {
+  return [{ id: "sample" }];
+}
+
 export async function POST(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> }

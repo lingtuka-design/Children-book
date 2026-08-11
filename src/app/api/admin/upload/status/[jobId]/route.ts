@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUploadJob } from "@/lib/jobs";
 
+export async function generateStaticParams() {
+  return [{ jobId: "sample" }];
+}
+
 export async function GET(
   _req: NextRequest,
   ctx: { params: Promise<{ jobId: string }> }

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 /** Public order lookup by order number (used by the confirmation page). */
+export async function generateStaticParams() {
+  return [{ orderNumber: "sample" }];
+}
+
 export async function GET(
   _req: NextRequest,
   ctx: { params: Promise<{ orderNumber: string }> }

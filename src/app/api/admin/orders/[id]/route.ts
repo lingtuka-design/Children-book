@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminMutation } from "@/lib/auth";
 import { orderStatusSchema } from "@/lib/validation";
 
+export async function generateStaticParams() {
+  return [{ id: "sample" }];
+}
+
 export async function GET(
   _req: NextRequest,
   ctx: { params: Promise<{ id: string }> }

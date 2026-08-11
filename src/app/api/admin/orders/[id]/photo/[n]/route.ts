@@ -8,6 +8,10 @@ import { orderDir } from "@/lib/storage";
  * Serves a customer's uploaded photo to an authenticated admin only.
  * Customer photos are private and never exposed through public routes.
  */
+export async function generateStaticParams() {
+  return [{ id: "sample", n: "1" }];
+}
+
 export async function GET(
   req: NextRequest,
   ctx: { params: Promise<{ id: string; n: string }> }

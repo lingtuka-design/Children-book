@@ -5,6 +5,10 @@ import { slugify } from "@/lib/site";
 import { deleteBookFiles } from "@/lib/process-book";
 import { requireAdminMutation } from "@/lib/auth";
 
+export async function generateStaticParams() {
+  return [{ id: "sample" }];
+}
+
 export async function GET(
   _req: NextRequest,
   ctx: { params: Promise<{ id: string }> }

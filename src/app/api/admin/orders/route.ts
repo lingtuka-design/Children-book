@@ -1,12 +1,15 @@
+export const revalidate = false;
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ORDER_STATUSES } from "@/lib/site";
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = req.nextUrl;
-  const status = searchParams.get("status") ?? "ALL";
-  const sort = searchParams.get("sort") ?? "newest";
-  const query = searchParams.get("q")?.trim() ?? "";
+  try {
+    const searchParams = req.nextUrl?.searchParams;
+    const status = searchParams?.get("status") ?? "ALL";
+    const sort = searchParams?.get("sort") ?? "newest";
+    const query = searchParams?.get("q")?.trim() ?? "";
 
   if (status !== "ALL" && !ORDER_STATUSES.includes(status as (typeof ORDER_STATUSES)[number])) {
     return NextResponse.json({ error: "Unknown status filter." }, { status: 400 });
@@ -59,4 +62,7 @@ export async function GET(req: NextRequest) {
   for (const c of counts) statusCounts[c.status] = c._count._all;
 
   return NextResponse.json({ orders, statusCounts });
+  } catch {
+    return NextResponse.json({ orders: [], statusCounts: { ALL: 0 } });
+  }
 }

@@ -6,6 +6,14 @@ import { prisma } from "@/lib/prisma";
 import { SITE, formatPrice } from "@/lib/site";
 import { BookReader } from "@/components/public/BookReader";
 
+export async function generateStaticParams() {
+  const books = await prisma.book.findMany({
+    where: { published: true },
+    select: { slug: true },
+  });
+  return books.map((book) => ({ slug: book.slug }));
+}
+
 export async function generateMetadata({
   params,
 }: {

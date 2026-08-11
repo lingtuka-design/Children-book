@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { SITE } from "@/lib/site";
 
+export const dynamic = "force-static";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const books = await prisma.book.findMany({
     where: { published: true },

@@ -6,6 +6,10 @@ import { requireAdminMutation } from "@/lib/auth";
  * Marks/removes a Top Feature and manages feature ordering.
  * Body: { topFeature: boolean, featureOrder?: number }
  */
+export async function generateStaticParams() {
+  return [{ id: "sample" }];
+}
+
 export async function POST(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> }

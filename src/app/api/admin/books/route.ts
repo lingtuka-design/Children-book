@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+export const revalidate = false;
+
 export async function GET() {
   const books = await prisma.book.findMany({
     orderBy: { createdAt: "desc" },

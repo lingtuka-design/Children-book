@@ -14,6 +14,8 @@ import { requireAdminMutation } from "@/lib/auth";
  * The request only saves the original files and starts a background job;
  * the admin UI polls GET /api/admin/upload/status/:jobId for progress.
  */
+export const revalidate = false;
+
 export async function POST(req: NextRequest) {
   const blocked = await requireAdminMutation(req);
   if (blocked) return blocked;

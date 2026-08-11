@@ -12,6 +12,8 @@ import { extForMime, readImageInfo } from "@/lib/images";
  * Multipart form: productId, customerName, address, phone, story,
  * photo1, photo2 (JPG/PNG/WebP files).
  */
+export const revalidate = false;
+
 export async function POST(req: NextRequest) {
   let form: FormData;
   try {

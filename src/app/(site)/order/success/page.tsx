@@ -15,7 +15,13 @@ export default async function OrderSuccessPage({
 }: {
   searchParams: Promise<{ ref?: string }>;
 }) {
-  const { ref } = await searchParams;
+  let ref: string | undefined;
+  try {
+    const params = await searchParams;
+    ref = params?.ref;
+  } catch {
+    ref = undefined;
+  }
   if (!ref) notFound();
 
   const order = await prisma.order.findUnique({
