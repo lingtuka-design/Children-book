@@ -1,0 +1,104 @@
+// Children's Book Portfolio & Ordering Platform — Database Schema
+// SQLite for local/simple hosting; portable to PostgreSQL by changing
+// the `provider` and `url` below (no schema changes required).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Admin users (the only accounts in the system — customers never log in)
+// ---------------------------------------------------------------------------
+model AdminUser {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  name         String?
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Books — the public portfolio
+// ---------------------------------------------------------------------------
+model Book {
+  id            String     @id @default(cuid())
+  slug          String     @unique
+  title         String
+  description   String?
+  author        String?
+  illustrator   String?
+  year          String?
+  tags          String?
+  cover         String // public URL, e.g. /storage/books/<id>/cover.jpg
+  coverThumb    String?
+  originalFile  String? // relative path of the originally uploaded source
+  originalMime  String?
+  pageCount     Int        @default(0)
+  published     Boolean    @default(false)
+  topFeature    Boolean    @default(false)
+  featureOrder  Int        @default(0)
+  displayOrder  Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  pages         BookPage[]
+}
+
+model BookPage {
+  id         String   @id @default(cuid())
+  bookId     String
+  pageNumber Int
+  image      String // public URL
+  thumb      String?
+  createdAt  DateTime @default(now())
+  book       Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, pageNumber])
+  @@index([bookId])
+}
+
+// ---------------------------------------------------------------------------
+// Products — future-ready: multiple page counts, aspect ratios, prices, etc.
+// Version 1 ships a single active product: 24 pages / 4:3 / Rs. 1,500
+// ---------------------------------------------------------------------------
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  pageCount   Int
+  aspectRatio String
+  price       Int // minor unit free — price is the full displayed amount
+  currency    String   @default("Rs.")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  orders      Order[]
+}
+
+// ---------------------------------------------------------------------------
+// Orders — guest orders (no customer accounts)
+// ---------------------------------------------------------------------------
+model Order {
+  id           String    @id @default(cuid())
+  orderNumber  String    @unique
+  customerName String
+  address      String
+  phone        String
+  childPhoto1  String // private relative path, e.g. orders/CB-.../photo1.jpg
+  childPhoto2  String
+  story        String
+  pageCount    Int
+  aspectRatio  String
+  price        Int // price snapshot at time of order
+  currency     String    @default("Rs.")
+  status       String    @default("NEW") // NEW | IN_PROGRESS | AWAITING_CUSTOMER | COMPLETED | CANCELLED
+  productId    String?
+  product      Product?  @relation(fields: [productId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
