@@ -69,8 +69,8 @@ export default function UploadWizard() {
       }
       setFiles(arr);
     } else {
-      if (arr.some((f) => !f.type.startsWith("image/"))) {
-        setFieldError("Image books accept JPG/JPEG files only — one image per page, in order.");
+      if (arr.some((f) => !f.type.startsWith("image/") && !/\.(jpe?g|png|webp)$/i.test(f.name))) {
+        setFieldError("Image books accept PNG, JPG, JPEG, or WebP files — one image per page, in order.");
         return;
       }
       // Arrange by the numbers in the file names (page 2 before page 10).
@@ -225,11 +225,11 @@ export default function UploadWizard() {
             Book File <span className="text-coral-deep">*</span>
           </p>
           <p className="mt-0.5 text-xs text-ink-faint">
-            Upload a single PDF — or JPG/JPEG page images, one per page. Files
-            are arranged by the numbers in their names. For JPG books a blank
-            page 0 (inside front cover) and a blank page after the last page
-            (inside back cover) are added automatically — upload 24 pages and
-            the book has 26 pages in total.
+            Upload a single PDF — or PNG, JPG, JPEG, or WebP page images, one per
+            page. Files are arranged by the numbers in their names. For image
+            books a blank page 0 (inside front cover) and a blank page after the
+            last page (inside back cover) are added automatically — upload 24
+            pages and the book has 26 pages in total.
           </p>
           <div
             onDragOver={(e) => e.preventDefault()}
@@ -245,14 +245,14 @@ export default function UploadWizard() {
               className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-ink/15 bg-cream/60 px-4 py-10 transition-colors hover:border-coral hover:bg-coral-soft/40"
             >
               <UploadCloud size={26} strokeWidth={1.8} className="text-coral-deep" aria-hidden />
-              <span className="text-sm font-bold text-ink">Choose PDF or JPG pages</span>
+              <span className="text-sm font-bold text-ink">Choose PDF, PNG, JPG, or WebP pages</span>
               <span className="text-xs text-ink-faint">or drop them here</span>
             </button>
           </div>
           <input
             ref={filesRef}
             type="file"
-            accept=".pdf,application/pdf,image/jpeg,image/jpg,.jpg,.jpeg"
+            accept=".pdf,application/pdf,image/jpeg,image/jpg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
             multiple
             className="sr-only"
             onChange={(e) => pickFiles(e.target.files)}

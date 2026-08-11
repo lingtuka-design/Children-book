@@ -116,9 +116,10 @@ export async function processBook(input: ProcessBookInput): Promise<ProcessBookR
       // numbers in their names (page 2 comes before page 10).
       const sorted = sortFilesByNumber(files);
       for (const f of sorted) {
-        if (f.mime !== "image/jpeg") {
+        const isImg = f.mime.startsWith("image/") || /\.(jpe?g|png|webp)$/i.test(f.name);
+        if (!isImg) {
           throw new Error(
-            "JPG books must contain only JPEG (JPG) page images. We found an unsupported file type."
+            "Page images must be PNG, JPG, JPEG, or WebP files. We found an unsupported file type."
           );
         }
         await readImageInfo(f.buffer); // rejects corrupt/non-image files
