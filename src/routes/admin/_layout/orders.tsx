@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { ClipboardList, Lock, Phone, MapPin, BookOpen, Trash2, MessageSquare } from 'lucide-react'
+import { ClipboardList, Lock, Phone, MapPin, BookOpen, Trash2, MessageSquare, Download } from 'lucide-react'
 import { SpinnerScreen } from '@/components/ui/Spinner'
 import { ErrorBanner } from '@/components/ui/Fields'
 import { Badge } from '@/components/ui/Badge'
@@ -134,6 +134,7 @@ function AdminOrdersRoute() {
                           </h3>
                           <dl className="space-y-1.5 rounded-2xl bg-paper-100/70 p-4 text-sm">
                             <Row k="Name" v={order.customer.name} />
+                            {order.childName && <Row k="Child's Name" v={order.childName} />}
                             <Row k="Phone" v={order.customer.phone} />
                             <Row k="Town / City" v={order.customer.city} />
                             <Row k="Locality" v={order.customer.locality} />
@@ -163,16 +164,25 @@ function AdminOrdersRoute() {
                       <div className="space-y-4">
                         <section>
                           <h3 className="mb-2 flex items-center gap-1.5 text-sm font-extrabold uppercase tracking-wide text-ink-500">
-                            <Lock className="size-4" aria-hidden="true" /> Child photos (private)
+                            <Lock className="size-4" aria-hidden="true" /> Child photos for AI Face Swap (private)
                           </h3>
-                          <div className="flex flex-wrap gap-3">
+                          <div className="flex flex-wrap gap-4">
                             {order.photos.map((photo, i) => (
-                              <img
-                                key={i}
-                                src={photo}
-                                alt={`Child photo ${i + 1}`}
-                                className="aspect-[4/5] w-32 rounded-2xl border border-paper-200 object-cover shadow-sm"
-                              />
+                              <div key={i} className="flex flex-col items-center gap-2">
+                                <img
+                                  src={photo}
+                                  alt={`Child photo ${i + 1}`}
+                                  className="aspect-[4/5] w-36 rounded-2xl border border-paper-200 object-cover shadow-sm"
+                                />
+                                <a
+                                  href={photo}
+                                  download={`${(order.childName || order.customer.name).replace(/\s+/g, '_')}_photo_${i + 1}.png`}
+                                  className="inline-flex items-center gap-1.5 rounded-xl bg-coral-500 px-3 py-1.5 text-xs font-extrabold text-white shadow-sm hover:bg-coral-600"
+                                  title="Download uncompressed original photo for AI Face Swap"
+                                >
+                                  <Download className="size-3.5" /> Download Original ({i + 1})
+                                </a>
+                              </div>
                             ))}
                           </div>
                         </section>

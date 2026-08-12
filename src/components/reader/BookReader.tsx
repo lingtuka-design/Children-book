@@ -27,7 +27,7 @@ const Page = React.forwardRef<
   return (
     <div
       ref={ref}
-      className="page relative h-full w-full overflow-hidden bg-white shadow-md select-none border border-paper-300/40"
+      className="page relative h-full w-full overflow-hidden bg-paper-50 select-none shadow-sm"
       data-density="soft"
     >
       <div className="relative h-full w-full">
@@ -38,7 +38,7 @@ const Page = React.forwardRef<
             src={page.url}
             alt={`Book page ${number}`}
             draggable={false}
-            className="h-full w-full object-contain select-none"
+            className="h-full w-full object-cover select-none"
           />
         )}
 
@@ -261,7 +261,7 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
           immersive ? 'min-h-0 flex-1' : 'mx-auto max-w-5xl',
         )}
       >
-        <div className="relative flex items-center justify-center p-2 rounded-2xl bg-paper-300/40 shadow-book">
+        <div className="relative flex items-center justify-center">
           {/* Requirement 2: HTMLFlipBook Component with exact specified props */}
           {/* @ts-ignore - react-pageflip React 19 type compatibility */}
           <HTMLFlipBook

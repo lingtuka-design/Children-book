@@ -27,6 +27,7 @@ interface FormState {
   locality: string
   address: string
   phone: string
+  childName: string
   childAge: string
   photo1: string | null
   photo2: string | null
@@ -40,6 +41,7 @@ const initialForm: FormState = {
   locality: '',
   address: '',
   phone: '',
+  childName: '',
   childAge: '',
   photo1: null,
   photo2: null,
@@ -90,6 +92,7 @@ function OrderRoute() {
         next.phoneFormat = 'invalid'
       }
     } else if (stepNo === 2) {
+      if (!form.childName.trim()) next.childName = 'Please enter your child\u2019s name'
       const age = Number(form.childAge)
       if (!form.childAge || Number.isNaN(age)) next.childAge = 'Please enter your child\u2019s age'
       else if (age < 0 || age > 18) next.childAge = 'Age should be between 0 and 18'
@@ -121,6 +124,7 @@ function OrderRoute() {
           address: form.address.trim(),
           phone: form.phone.trim(),
         },
+        childName: form.childName.trim(),
         childAge: Number(form.childAge),
         photos: [form.photo1!, ...(form.photo2 ? [form.photo2] : [])],
         styleId: form.styleId!,
@@ -285,18 +289,27 @@ function OrderRoute() {
             {step === 2 && (
               <div className="animate-fade-in space-y-7">
                 <h1 className="heading-display text-2xl">About your child</h1>
-                <Input
-                  label="Child&#8217;s Age"
-                  required
-                  type="number"
-                  min={0}
-                  max={18}
-                  value={form.childAge}
-                  error={errors.childAge}
-                  onChange={(e) => set('childAge', e.target.value)}
-                  placeholder="e.g. 5"
-                  className="max-w-40"
-                />
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Input
+                    label="Child&#8217;s Name"
+                    required
+                    value={form.childName}
+                    error={errors.childName}
+                    onChange={(e) => set('childName', e.target.value)}
+                    placeholder="e.g. Samuel / Zosangi"
+                  />
+                  <Input
+                    label="Child&#8217;s Age"
+                    required
+                    type="number"
+                    min={0}
+                    max={18}
+                    value={form.childAge}
+                    error={errors.childAge}
+                    onChange={(e) => set('childAge', e.target.value)}
+                    placeholder="e.g. 5"
+                  />
+                </div>
                 <PhotoUpload
                   photo1={form.photo1}
                   photo2={form.photo2}
@@ -363,6 +376,7 @@ function OrderRoute() {
                   <Row k="Locality" v={form.locality} />
                   <Row k="Address" v={form.address} />
                   <Row k="Phone" v={form.phone} />
+                  <Row k="Child's name" v={form.childName} />
                   <Row k={'Child\u2019s age'} v={form.childAge} />
                   <Row
                     k="Photos"

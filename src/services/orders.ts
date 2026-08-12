@@ -10,6 +10,7 @@ const RECORD_PREFIX = 'order:'
 
 export interface CreateOrderInput {
   customer: Order['customer']
+  childName?: string
   childAge: number
   photos: string[]
   styleId: string
@@ -61,6 +62,7 @@ async function localCreateOrder(input: CreateOrderInput): Promise<Order> {
       address: input.customer.address.trim(),
       phone: input.customer.phone.trim(),
     },
+    childName: input.childName?.trim() || undefined,
     childAge: input.childAge,
     photos: input.photos,
     styleId: input.styleId,

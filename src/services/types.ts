@@ -63,6 +63,7 @@ export interface Order {
   id: string
   status: OrderStatus
   customer: OrderCustomer
+  childName?: string
   childAge: number
   photos: string[]
   styleId: string
