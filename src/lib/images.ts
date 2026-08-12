@@ -1,94 +1,84 @@
-import sharp from "sharp";
-import { createCanvas } from "@napi-rs/canvas";
+import { ACCEPTED_IMAGE_TYPES, ACCEPTED_PHOTO_TYPES } from './constants'
+import { readFileAsDataUrl } from './utils'
 
-/**
- * Optimized web version of an image. Preserves quality (children's book
- * artwork matters) — never aggressively compressed; originals are kept
- * separately for archival.
- */
-export async function optimizeImage(
-  buffer: Buffer,
-  opts: { width?: number; quality?: number } = {}
-) {
-  const { width = 1600, quality = 90 } = opts;
-  return sharp(buffer, { failOn: "error" })
-    .rotate()
-    .resize({ width, withoutEnlargement: true })
-    .jpeg({ quality, chromaSubsampling: "4:2:0" })
-    .toBuffer();
+export interface ImageOptions {
+  maxWidth?: number
+  maxHeight?: number
+  quality?: number
+  outputType?: 'image/jpeg' | 'image/webp'
 }
 
-/**
- * A blank book page (soft paper tone, subtle vignette) sized to match the
- * rest of the book. Used for the first and last pages of JPG-based uploads.
- */
-export function makeBlankPage(width: number, height: number) {
-  const w = Math.max(2, Math.round(width));
-  const h = Math.max(2, Math.round(height));
-  const canvas = createCanvas(w, h);
-  const ctx = canvas.getContext("2d");
-
-  const base = ctx.createRadialGradient(
-    w * 0.5,
-    h * 0.42,
-    0,
-    w * 0.5,
-    h * 0.5,
-    Math.max(w, h) * 0.75
-  );
-  base.addColorStop(0, "#fbf6ee");
-  base.addColorStop(1, "#f1e7d3");
-  ctx.fillStyle = base;
-  ctx.fillRect(0, 0, w, h);
-
-  const vignette = ctx.createRadialGradient(
-    w * 0.5,
-    h * 0.5,
-    Math.max(w, h) * 0.25,
-    w * 0.5,
-    h * 0.5,
-    Math.max(w, h) * 0.9
-  );
-  vignette.addColorStop(0, "rgba(255,255,255,0)");
-  vignette.addColorStop(1, "rgba(45,42,61,0.07)");
-  ctx.fillStyle = vignette;
-  ctx.fillRect(0, 0, w, h);
-
-  return canvas.toBuffer("image/jpeg", 88);
+export function isPdf(file: { type: string; name: string }): boolean {
+  return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
 }
 
-export async function makeThumb(buffer: Buffer, width = 280) {
-  return sharp(buffer, { failOn: "error" })
-    .rotate()
-    .resize({ width, withoutEnlargement: true })
-    .jpeg({ quality: 78 })
-    .toBuffer();
+export function isAcceptedImage(file: { type: string }): boolean {
+  return ACCEPTED_IMAGE_TYPES.includes(file.type)
 }
 
-/** Verifies the buffer is a real image and returns its info (magic-byte validation). */
-export async function readImageInfo(buffer: Buffer) {
-  const meta = await sharp(buffer, { failOn: "error" }).metadata();
-  if (!meta.width || !meta.height || !meta.format) {
-    throw new Error("Not a readable image.");
-  }
-  return { width: meta.width, height: meta.height, format: meta.format };
+export function isAcceptedPhoto(file: { type: string }): boolean {
+  return ACCEPTED_PHOTO_TYPES.includes(file.type)
 }
 
-export function isSupportedImage(mime: string) {
-  return ["image/jpeg", "image/png", "image/webp"].includes(mime);
+export function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('Could not load image'))
+    img.src = src
+  })
 }
 
-export function extForMime(mime: string) {
-  switch (mime) {
-    case "image/jpeg":
-      return "jpg";
-    case "image/png":
-      return "png";
-    case "image/webp":
-      return "webp";
-    case "application/pdf":
-      return "pdf";
-    default:
-      return "bin";
-  }
+/** Decode an image (file or data URL) and re-encode it to a bounded, compressed data URL. */
+export async function processImage(
+  src: string | File,
+  options: ImageOptions = {},
+): Promise<string> {
+  const { maxWidth = 1600, maxHeight = 1600, quality = 0.82, outputType = 'image/jpeg' } = options
+  const dataUrl = typeof src === 'string' ? src : await readFileAsDataUrl(src)
+  const img = await loadImage(dataUrl)
+
+  const scale = Math.min(1, maxWidth / img.naturalWidth, maxHeight / img.naturalHeight)
+  const w = Math.max(1, Math.round(img.naturalWidth * scale))
+  const h = Math.max(1, Math.round(img.naturalHeight * scale))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return dataUrl
+
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, w, h)
+  ctx.drawImage(img, 0, 0, w, h)
+
+  return canvas.toDataURL(outputType, quality)
+}
+
+/** Snapshot an arbitrary surface (e.g. a canvas) to a bounded data URL. */
+export async function snapshotCanvas(
+  canvas: HTMLCanvasElement,
+  options: ImageOptions = {},
+): Promise<string> {
+  const { maxWidth = 1600, maxHeight = 1600, quality = 0.82, outputType = 'image/jpeg' } = options
+  const scale = Math.min(1, maxWidth / canvas.width, maxHeight / canvas.height)
+  if (scale >= 1) return canvas.toDataURL(outputType, quality)
+
+  const out = document.createElement('canvas')
+  out.width = Math.max(1, Math.round(canvas.width * scale))
+  out.height = Math.max(1, Math.round(canvas.height * scale))
+  const ctx = out.getContext('2d')
+  if (!ctx) return canvas.toDataURL(outputType, quality)
+  ctx.drawImage(canvas, 0, 0, out.width, out.height)
+  return out.toDataURL(outputType, quality)
+}
+
+export function svgDataUrl(svg: string): string {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+}
+
+/** Parse a leading number out of a file name: "page-03.jpg" -> 3, "cover.pdf" -> null */
+export function pageNumberFromFilename(name: string): number | null {
+  const match = name.match(/(?:^|[^\d])(\d{1,3})(?:[^\d]|$)/)
+  return match ? parseInt(match[1], 10) : null
 }
