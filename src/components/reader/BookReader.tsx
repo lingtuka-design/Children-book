@@ -8,6 +8,8 @@ import {
   RotateCw,
   SkipBack,
   SkipForward,
+  Volume2,
+  VolumeX,
 } from 'lucide-react'
 import type { ReaderPage } from '@/services/types'
 import { cn } from '@/lib/utils'
@@ -85,6 +87,53 @@ function PageFace({
   )
 }
 
+function playPageTurnSound() {
+  try {
+    const AudioContextClass =
+      window.AudioContext || (window as unknown as { webkitAudioContext: typeof window.AudioContext }).webkitAudioContext
+    if (!AudioContextClass) return
+    const ctx = new AudioContextClass()
+    const bufferSize = Math.floor(ctx.sampleRate * 0.14)
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+    const data = buffer.getChannelData(0)
+
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1
+      b0 = 0.99886 * b0 + white * 0.0555179
+      b1 = 0.99332 * b1 + white * 0.0750759
+      b2 = 0.969 * b2 + white * 0.153852
+      b3 = 0.8665 * b3 + white * 0.3104856
+      b4 = 0.55 * b4 + white * 0.5329522
+      b5 = -0.7616 * b5 - white * 0.016898
+      data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.08
+      b6 = white * 0.115926
+    }
+
+    const source = ctx.createBufferSource()
+    source.buffer = buffer
+
+    const filter = ctx.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.setValueAtTime(1400, ctx.currentTime)
+
+    const gain = ctx.createGain()
+    gain.gain.setValueAtTime(0.06, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.13)
+
+    source.connect(filter)
+    filter.connect(gain)
+    gain.connect(ctx.destination)
+
+    source.start()
+    source.onended = () => {
+      void ctx.close()
+    }
+  } catch {
+    // Audio Context restricted or unavailable
+  }
+}
+
 export function BookReader({ pages, className, variant = 'embedded' }: BookReaderProps) {
   const total = pages.length
   const immersive = variant === 'immersive'
@@ -93,6 +142,7 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
   const [pos, setPos] = useState(0)
   const [flip, setFlip] = useState<FlipState>(null)
   const [busy, setBusy] = useState(false)
+  const [soundEnabled, setSoundEnabled] = useState(true)
   const [fullscreen, setFullscreen] = useState(false)
   const dragRef = useRef<{ x: number; y: number; moved: boolean } | null>(null)
 
@@ -122,6 +172,7 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
       const step = spread ? 2 : 1
       const to = pos + dir * step
       if (to < 0 || to > maxPos) return
+      if (soundEnabled) playPageTurnSound()
       setFlip({ dir })
       setBusy(true)
       window.setTimeout(() => {
@@ -130,7 +181,7 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
         setBusy(false)
       }, TURN_MS)
     },
-    [busy, pos, spread, maxPos],
+    [busy, pos, spread, maxPos, soundEnabled],
   )
 
   const jump = useCallback(
@@ -465,6 +516,15 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
         {!immersive && (
           <>
             <div className={cn('mx-1 h-8 w-px', immersive ? 'bg-white/20' : 'bg-paper-200')} aria-hidden="true" />
+            <button
+              type="button"
+              className={cn(ctrlBtn, 'flex size-10')}
+              aria-label={soundEnabled ? 'Mute page turn sound' : 'Enable page turn sound'}
+              onClick={() => setSoundEnabled((s) => !s)}
+              title={soundEnabled ? 'Page flip audio on' : 'Page flip audio muted'}
+            >
+              {soundEnabled ? <Volume2 className="size-5 text-coral-600" /> : <VolumeX className="size-5 text-ink-500" />}
+            </button>
             <button
               type="button"
               className={cn(ctrlBtn, 'flex size-10')}
