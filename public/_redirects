@@ -1,2 +1,4 @@
 # SPA fallback for Cloudflare Pages — all routes serve index.html
+/admin/* /index.html 200
+/admin /index.html 200
 /* /index.html 200
