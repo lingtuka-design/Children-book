@@ -106,7 +106,8 @@ function AdminOrdersRoute() {
                   </div>
                   <div className="min-w-44">
                     <p className="font-bold text-ink-900">{order.customer.name}</p>
-                    <p className="flex items-center gap-1 text-xs text-ink-500">
+                    <p className="text-xs font-semibold text-coral-600">Child: {order.childName || 'Not specified'}</p>
+                    <p className="flex items-center gap-1 text-xs text-ink-500 mt-0.5">
                       <MapPin className="size-3" aria-hidden="true" />
                       {order.customer.city} · {order.customer.locality}
                     </p>
@@ -130,11 +131,11 @@ function AdminOrdersRoute() {
                       <div className="space-y-4">
                         <section>
                           <h3 className="mb-2 flex items-center gap-1.5 text-sm font-extrabold uppercase tracking-wide text-ink-500">
-                            <Phone className="size-4" aria-hidden="true" /> Customer details
+                            <Phone className="size-4" aria-hidden="true" /> Customer &amp; Child details
                           </h3>
                           <dl className="space-y-1.5 rounded-2xl bg-paper-100/70 p-4 text-sm">
-                            <Row k="Name" v={order.customer.name} />
-                            {order.childName && <Row k="Child's Name" v={order.childName} />}
+                            <Row k="Parent / Buyer Name" v={order.customer.name} />
+                            <Row k="Child's Name (Naupang Hming)" v={order.childName || 'Not specified'} />
                             <Row k="Phone" v={order.customer.phone} />
                             <Row k="Town / City" v={order.customer.city} />
                             <Row k="Locality" v={order.customer.locality} />

@@ -4,7 +4,7 @@ import { createOrder, setOrderCreatedAt, type CreateOrderInput } from './orders'
 import { SAMPLE_BOOKS, generateSampleAssets } from '@/lib/sampleArt'
 import { svgDataUrl } from '@/lib/images'
 
-const SEED_KEY = 'seed:v1'
+const SEED_KEY = 'seed:v2'
 
 function photoPlaceholder(seed: number, label: string): string {
   const hue = [16, 200, 45, 260, 330][seed % 5]
@@ -51,6 +51,7 @@ export async function seedIfEmpty(): Promise<void> {
         address: '12, Palm Grove, J.P. Road, Andheri West',
         phone: '+91 98200 11223',
       },
+      childName: 'Aarav',
       childAge: 6,
       photos: [photoPlaceholder(0, 'Photo 1'), photoPlaceholder(1, 'Photo 2')],
       styleId: 'style-1',
@@ -66,6 +67,7 @@ export async function seedIfEmpty(): Promise<void> {
         address: '44, 100 Feet Road, Indiranagar 2nd Stage',
         phone: '98450 66778',
       },
+      childName: 'Riya',
       childAge: 4,
       photos: [photoPlaceholder(2, 'Photo 1')],
       styleId: 'style-2',
@@ -79,6 +81,7 @@ export async function seedIfEmpty(): Promise<void> {
     try {
       const order = await createOrder({
         customer: sample.customer,
+        childName: sample.childName,
         childAge: sample.childAge,
         photos: sample.photos,
         styleId: sample.styleId,
