@@ -22,8 +22,8 @@ interface BookReaderProps {
 /* Page Component wrapped with React.forwardRef for react-pageflip DOM ref handling */
 const Page = React.forwardRef<
   HTMLDivElement,
-  { page: ReaderPage; number: number; total: number }
->(({ page, number, total }, ref) => {
+  { page: ReaderPage; number: number; total: number; isMobile?: boolean }
+>(({ page, number, total, isMobile }, ref) => {
   return (
     <div
       ref={ref}
@@ -42,25 +42,27 @@ const Page = React.forwardRef<
           />
         )}
 
-        {/* Paper Spine & Crease Depth Overlay */}
-        <div
-          className="pointer-events-none absolute inset-y-0 w-8"
-          style={{
-            background:
-              number % 2 === 0
-                ? 'linear-gradient(to right, rgba(0,0,0,0.12) 0%, transparent 100%)'
-                : 'linear-gradient(to left, rgba(0,0,0,0.12) 0%, transparent 100%)',
-            right: number % 2 === 0 ? 'auto' : 0,
-            left: number % 2 === 0 ? 0 : 'auto',
-          }}
-        />
+        {/* Paper Spine & Crease Depth Overlay (desktop 2-page spread only) */}
+        {!isMobile && (
+          <div
+            className="pointer-events-none absolute inset-y-0 w-8"
+            style={{
+              background:
+                number % 2 === 0
+                  ? 'linear-gradient(to right, rgba(0,0,0,0.12) 0%, transparent 100%)'
+                  : 'linear-gradient(to left, rgba(0,0,0,0.12) 0%, transparent 100%)',
+              right: number % 2 === 0 ? 'auto' : 0,
+              left: number % 2 === 0 ? 0 : 'auto',
+            }}
+          />
+        )}
 
         {/* Page Number Indicator */}
         {!page.blank && (
           <span
             className={cn(
               'absolute bottom-2 text-xs font-bold text-ink-500/70 select-none px-3',
-              number % 2 === 0 ? 'left-2' : 'right-2',
+              isMobile ? 'right-2' : number % 2 === 0 ? 'left-2' : 'right-2',
             )}
           >
             {number} / {total}
@@ -121,7 +123,6 @@ function playPageTurnSound() {
 }
 
 export function BookReader({ pages, className, variant = 'embedded' }: BookReaderProps) {
-  const total = pages.length
   const immersive = variant === 'immersive'
   const containerRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
@@ -130,12 +131,33 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
   const [currentPage, setCurrentPage] = useState(0)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [fullscreen, setFullscreen] = useState(false)
+  const [isMobile, setIsMobile] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false,
+  )
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  /* Mobile view displays 1 single page at a time starting from Page 1 to Page 24 (excluding Page 0 and Page 25) */
+  const displayPages = React.useMemo(() => {
+    if (isMobile) {
+      const filtered = pages.filter((p) => p.index >= 1 && p.index <= 24)
+      return filtered.length > 0 ? filtered : pages
+    }
+    return pages
+  }, [pages, isMobile])
+
+  const total = displayPages.length
 
   /* Dynamic Responsive Dimensions for 4:3 Landscape Interior Pages (Height = Width * 0.75) */
   const [dimensions, setDimensions] = useState<{ width: number; height: number }>(() => {
     const initialWidth = Math.min(typeof window !== 'undefined' ? window.innerWidth - 32 : 900, 1024)
-    const isPortrait = typeof window !== 'undefined' ? window.innerWidth < 768 : false
-    const pageW = isPortrait ? initialWidth : Math.floor(initialWidth / 2)
+    const mob = typeof window !== 'undefined' ? window.innerWidth < 768 : false
+    const pageW = mob ? initialWidth : Math.floor(initialWidth / 2)
     const pageH = Math.floor(pageW * 0.75) // 4:3 Landscape ratio
     return { width: pageW, height: pageH }
   })
@@ -144,9 +166,9 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
     const updateDimensions = () => {
       const containerWidth =
         containerRef.current?.clientWidth || Math.min(window.innerWidth - 32, 1024)
-      const isPortrait = window.innerWidth < 768
+      const mob = window.innerWidth < 768
       const effectiveWidth = Math.max(300, Math.min(containerWidth, 1024))
-      const pageW = isPortrait ? effectiveWidth : Math.floor(effectiveWidth / 2)
+      const pageW = mob ? effectiveWidth : Math.floor(effectiveWidth / 2)
       const pageH = Math.floor(pageW * 0.75) // 4:3 Landscape ratio
       setDimensions({ width: pageW, height: pageH })
     }
@@ -262,9 +284,10 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
         )}
       >
         <div className="relative flex items-center justify-center">
-          {/* Requirement 2: HTMLFlipBook Component with exact specified props */}
+          {/* Requirement: Single page mode on mobile (usePortrait={isMobile}) */}
           {/* @ts-ignore - react-pageflip React 19 type compatibility */}
           <HTMLFlipBook
+            key={isMobile ? 'mobile-single' : 'desktop-spread'}
             ref={flipBookRef}
             width={dimensions.width}
             height={dimensions.height}
@@ -272,7 +295,7 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
             drawShadow={true}
             maxShadowOpacity={0.55}
             flippingTime={600}
-            usePortrait={false}
+            usePortrait={isMobile}
             showCover={false}
             useMouseEvents={true}
             swipeDistance={30}
@@ -284,15 +307,21 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
             startPage={0}
             minWidth={280}
             maxWidth={1024}
-            minHeight={350}
+            minHeight={210}
             maxHeight={1200}
             startZIndex={0}
             autoSize={true}
             mobileScrollSupport={true}
             clickEventForward={true}
           >
-            {pages.map((page, idx) => (
-              <Page key={page.index ?? idx} page={page} number={idx + 1} total={total} />
+            {displayPages.map((page, idx) => (
+              <Page
+                key={page.index ?? idx}
+                page={page}
+                number={isMobile ? page.index : idx + 1}
+                total={isMobile ? 24 : total}
+                isMobile={isMobile}
+              />
             ))}
           </HTMLFlipBook>
         </div>
