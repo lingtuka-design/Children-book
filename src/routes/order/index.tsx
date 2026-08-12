@@ -105,14 +105,29 @@ function OrderRoute() {
     return Object.keys(next).length === 0
   }
 
+  function validateAllSteps(): boolean {
+    const s1 = validateStep(1)
+    if (!s1) {
+      setStep(1)
+      return false
+    }
+    const s2 = validateStep(2)
+    if (!s2) {
+      setStep(2)
+      return false
+    }
+    const s3 = validateStep(3)
+    if (!s3) {
+      setStep(3)
+      return false
+    }
+    return true
+  }
+
   const selectedStyle = enabledStyles.find((s) => s.id === form.styleId)
 
   async function placeOrder() {
-    const valid = [1, 2, 3].map((s) => validateStep(s)).every(Boolean)
-    if (!valid) {
-      setStep(1)
-      return
-    }
+    if (!validateAllSteps()) return
     setSubmitting(true)
     setSubmitError(null)
     try {

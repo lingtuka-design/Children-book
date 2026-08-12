@@ -62,7 +62,7 @@ async function localCreateOrder(input: CreateOrderInput): Promise<Order> {
       address: input.customer.address.trim(),
       phone: input.customer.phone.trim(),
     },
-    childName: input.childName?.trim() || undefined,
+    childName: input.childName?.trim() || 'Not specified',
     childAge: input.childAge,
     photos: input.photos,
     styleId: input.styleId,

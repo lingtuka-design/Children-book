@@ -27,6 +27,7 @@ export async function remoteCreateOrder(input: CreateOrderInput): Promise<Order>
       address: input.customer.address.trim(),
       phone: input.customer.phone.trim(),
     },
+    childName: input.childName?.trim() || 'Not specified',
     childAge: input.childAge,
     photos,
     styleId: input.styleId,
