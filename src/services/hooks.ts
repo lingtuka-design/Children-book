@@ -4,6 +4,7 @@ import * as bookService from './books'
 import * as orderService from './orders'
 import * as styleService from './styles'
 import { auth } from './auth'
+import { storageReady } from './mode'
 
 export interface AsyncState<T> {
   data: T | null
@@ -22,7 +23,8 @@ function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): AsyncState<T> {
     let cancelled = false
     setLoading(true)
     setError(null)
-    fn()
+    storageReady
+      .then(fn)
       .then((result) => {
         if (!cancelled) setData(result)
       })

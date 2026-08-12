@@ -2,6 +2,8 @@ import type { BookStyle } from './types'
 import { kv } from './storage'
 import { STYLE_SLOTS } from '@/lib/constants'
 import { svgDataUrl } from '@/lib/images'
+import { storageMode } from './mode'
+import * as remote from './remote/styles'
 
 const STYLES_KEY = 'styles'
 
@@ -43,6 +45,10 @@ function defaultStyles(): BookStyle[] {
   }))
 }
 
+/* ------------------------------------------------------------------ */
+/* Local (localStorage) implementation                                 */
+/* ------------------------------------------------------------------ */
+
 function readStyles(): BookStyle[] {
   const stored = kv.get<BookStyle[]>(STYLES_KEY)
   if (Array.isArray(stored) && stored.length === STYLE_SLOTS) return stored
@@ -51,26 +57,47 @@ function readStyles(): BookStyle[] {
   return defaults
 }
 
-export async function getStyles(): Promise<BookStyle[]> {
+async function localGetStyles(): Promise<BookStyle[]> {
   return readStyles()
 }
 
-export async function getEnabledStyles(): Promise<BookStyle[]> {
-  return readStyles().filter((s) => s.enabled)
-}
-
-export async function updateStyle(id: string, patch: Partial<BookStyle>): Promise<BookStyle[]> {
+async function localUpdateStyle(id: string, patch: Partial<BookStyle>): Promise<BookStyle[]> {
   const styles = readStyles().map((s) => (s.id === id ? { ...s, ...patch } : s))
   kv.set(STYLES_KEY, styles)
   return styles
 }
 
-export async function replaceStyleImage(id: string, imageUrl: string): Promise<BookStyle[]> {
-  return updateStyle(id, { imageUrl })
+async function localReplaceStyleImage(id: string, imageUrl: string): Promise<BookStyle[]> {
+  return localUpdateStyle(id, { imageUrl })
 }
 
-export async function resetStyles(): Promise<BookStyle[]> {
+async function localResetStyles(): Promise<BookStyle[]> {
   const defaults = defaultStyles()
   kv.set(STYLES_KEY, defaults)
   return defaults
+}
+
+/* ------------------------------------------------------------------ */
+/* Public API — dispatches to remote (R2 + D1) or local storage        */
+/* ------------------------------------------------------------------ */
+
+export async function getStyles(): Promise<BookStyle[]> {
+  return storageMode() === 'remote' ? remote.remoteGetStyles() : localGetStyles()
+}
+
+export async function getEnabledStyles(): Promise<BookStyle[]> {
+  const styles = await getStyles()
+  return styles.filter((s) => s.enabled)
+}
+
+export async function updateStyle(id: string, patch: Partial<BookStyle>): Promise<BookStyle[]> {
+  return storageMode() === 'remote' ? remote.remoteUpdateStyle(id, patch) : localUpdateStyle(id, patch)
+}
+
+export async function replaceStyleImage(id: string, imageUrl: string): Promise<BookStyle[]> {
+  return storageMode() === 'remote' ? remote.remoteReplaceStyleImage(id, imageUrl) : localReplaceStyleImage(id, imageUrl)
+}
+
+export async function resetStyles(): Promise<BookStyle[]> {
+  return storageMode() === 'remote' ? remote.remoteResetStyles() : localResetStyles()
 }

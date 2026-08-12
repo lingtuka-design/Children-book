@@ -37,6 +37,8 @@ export interface BookSummary {
   published: boolean
   createdAt: string
   updatedAt: string
+  /** Populated by the remote API so listing pages can render covers quickly. */
+  coverUrl?: string
 }
 
 export type OrderStatus = 'new' | 'confirmed' | 'in-progress' | 'completed' | 'cancelled'

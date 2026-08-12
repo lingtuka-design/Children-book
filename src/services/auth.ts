@@ -20,6 +20,12 @@ const VALID_DIGESTS = new Set([
   '53842a1e388e10151d4a922030e00e4c74a93973c1a5b05937cee400811c1a36', // legacy
 ])
 
+/**
+ * Admin API bearer token, mirrored in functions/api/_lib.ts.
+ * Sent on admin mutations so the Cloudflare API can gate writes.
+ */
+export const AUTH_DIGEST = '53842a1e388e10151d4a922030e00e4c74a93973c1a5b05937cee400811c1a36'
+
 interface Session {
   username: string
   expiresAt: number

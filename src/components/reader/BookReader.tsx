@@ -18,6 +18,8 @@ const SWIPE_THRESHOLD = 60
 interface BookReaderProps {
   pages: ReaderPage[]
   className?: string
+  /** 'immersive' fills the viewport (used by the Read overlay). */
+  variant?: 'embedded' | 'immersive'
 }
 
 type FlipState = { dir: 1 | -1 } | null
@@ -53,8 +55,9 @@ function PageFace({
   )
 }
 
-export function BookReader({ pages, className }: BookReaderProps) {
+export function BookReader({ pages, className, variant = 'embedded' }: BookReaderProps) {
   const total = pages.length
+  const immersive = variant === 'immersive'
   const frameRef = useRef<HTMLDivElement>(null)
   const [spread, setSpread] = useState(false)
   const [pos, setPos] = useState(0)
@@ -187,18 +190,34 @@ export function BookReader({ pages, className }: BookReaderProps) {
   const label = spread ? `Pages ${pos + 1}–${pos + 2} of ${total}` : `Page ${pos + 1} of ${total}`
   const progress = ((pos + viewCount) / total) * 100
 
-  const ctrlBtn =
-    'grid size-10 place-items-center rounded-xl text-ink-700 transition-colors hover:bg-paper-100 disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent'
+  const ctrlBtn = cn(
+    'items-center justify-center rounded-xl transition-colors disabled:opacity-35 disabled:cursor-not-allowed',
+    immersive
+      ? 'text-paper-50/90 hover:bg-white/10 disabled:hover:bg-transparent'
+      : 'text-ink-700 hover:bg-paper-100 disabled:hover:bg-transparent',
+  )
 
   return (
-    <div ref={frameRef} className={cn('flex flex-col gap-4', fullscreen && 'p-6 md:p-10', className)}>
-      <div className="book-3d mx-auto w-full max-w-4xl">
+    <div
+      ref={frameRef}
+      className={cn(
+        'flex flex-col gap-4',
+        immersive && 'h-full gap-3',
+        fullscreen && 'p-6 md:p-10',
+        className,
+      )}
+    >
+      <div className={cn('book-3d flex w-full items-center justify-center', immersive ? 'min-h-0 flex-1' : 'mx-auto max-w-4xl')}>
         <div
           className={cn(
             'relative w-full touch-pan-y select-none overflow-hidden rounded-lg bg-paper-200 shadow-book ring-1 ring-ink-900/10',
-            spread ? 'aspect-[8/3]' : 'aspect-[4/3] max-w-2xl',
+            spread ? 'aspect-[8/3]' : 'aspect-[4/3]',
+            !immersive && (spread ? '' : 'max-w-2xl'),
           )}
-          style={{ cursor: 'pointer' }}
+          style={{
+            cursor: 'pointer',
+            ...(immersive ? { height: '100%', aspectRatio: spread ? '8 / 3' : '4 / 3', maxWidth: '100%' } : {}),
+          }}
           aria-label="Book reader — swipe or use the buttons to turn pages"
           {...pointerHandlers}
         >
@@ -281,17 +300,33 @@ export function BookReader({ pages, className }: BookReaderProps) {
       </div>
 
       {/* controls */}
-      <div className="mx-auto flex w-full max-w-2xl items-center justify-center gap-1">
-        <button type="button" className={ctrlBtn} aria-label="First page" disabled={!canPrev} onClick={() => jump(0)}>
+      <div className={cn('mx-auto flex w-full items-center justify-center gap-1', immersive ? 'max-w-xl' : 'max-w-2xl')}>
+        <button type="button" className={cn(ctrlBtn, 'hidden size-10 sm:flex')} aria-label="First page" disabled={!canPrev} onClick={() => jump(0)}>
           <SkipBack className="size-5" />
         </button>
-        <button type="button" className={ctrlBtn} aria-label="Previous page" disabled={!canPrev} onClick={() => turn(-1)}>
+        <button
+          type="button"
+          className={cn(ctrlBtn, 'flex size-10 gap-1 max-sm:size-auto max-sm:min-w-14 max-sm:px-2', !immersive && 'sm:size-10 sm:min-w-0 sm:px-0')}
+          aria-label="Previous page"
+          disabled={!canPrev}
+          onClick={() => turn(-1)}
+        >
           <ChevronLeft className="size-6" />
+          <span className="text-xs font-extrabold max-sm:inline sm:hidden">Previous</span>
         </button>
 
-        <div className="flex flex-1 flex-col items-center gap-1 px-2" aria-live="polite">
-          <span className="text-sm font-extrabold text-ink-900">{label}</span>
-          <div className="h-1.5 w-32 overflow-hidden rounded-full bg-paper-200" aria-hidden="true">
+        <div
+          className={cn(
+            'flex flex-1 flex-col items-center gap-1 px-2',
+            immersive && 'text-paper-50',
+          )}
+          aria-live="polite"
+        >
+          <span className={cn('text-sm font-extrabold', immersive ? 'text-paper-50' : 'text-ink-900')}>{label}</span>
+          <div
+            className={cn('h-1.5 w-32 overflow-hidden rounded-full', immersive ? 'bg-white/20' : 'bg-paper-200')}
+            aria-hidden="true"
+          >
             <div
               className="h-full rounded-full bg-coral-500 transition-all duration-300"
               style={{ width: `${progress}%` }}
@@ -299,25 +334,39 @@ export function BookReader({ pages, className }: BookReaderProps) {
           </div>
         </div>
 
-        <button type="button" className={ctrlBtn} aria-label="Next page" disabled={!canNext} onClick={() => turn(1)}>
+        <button
+          type="button"
+          className={cn(ctrlBtn, 'flex size-10 gap-1 max-sm:size-auto max-sm:min-w-14 max-sm:px-2', !immersive && 'sm:size-10 sm:min-w-0 sm:px-0')}
+          aria-label="Next page"
+          disabled={!canNext}
+          onClick={() => turn(1)}
+        >
+          <span className="text-xs font-extrabold max-sm:inline sm:hidden">Next</span>
           <ChevronRight className="size-6" />
         </button>
-        <button type="button" className={ctrlBtn} aria-label="Last page" disabled={!canNext} onClick={() => jump(maxPos)}>
+        <button type="button" className={cn(ctrlBtn, 'hidden size-10 sm:flex')} aria-label="Last page" disabled={!canNext} onClick={() => jump(maxPos)}>
           <SkipForward className="size-5" />
         </button>
 
-        <div className="mx-1 h-8 w-px bg-paper-200" aria-hidden="true" />
-        <button
-          type="button"
-          className={ctrlBtn}
-          aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-          onClick={toggleFullscreen}
-        >
-          {fullscreen ? <Minimize className="size-5" /> : <Maximize className="size-5" />}
-        </button>
+        {!immersive && (
+          <>
+            <div className={cn('mx-1 h-8 w-px', immersive ? 'bg-white/20' : 'bg-paper-200')} aria-hidden="true" />
+            <button
+              type="button"
+              className={cn(ctrlBtn, 'flex size-10')}
+              aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+              onClick={toggleFullscreen}
+            >
+              {fullscreen ? <Minimize className="size-5" /> : <Maximize className="size-5" />}
+            </button>
+          </>
+        )}
       </div>
 
-      <p className="text-center text-xs font-semibold text-ink-500" aria-hidden="true">
+      <p
+        className={cn('text-center text-xs font-semibold', immersive ? 'text-paper-50/60' : 'text-ink-500')}
+        aria-hidden="true"
+      >
         <span className="hidden sm:inline">Use arrow keys · </span>
         <RotateCw className="mr-0.5 inline size-3.5" />
         <RotateCcw className="mr-0.5 inline size-3.5" />

@@ -1,4 +1,7 @@
-# SPA fallback for Cloudflare Pages — all routes serve index.html
+# SPA fallback for Cloudflare Pages - all routes serve index.html.
+# Bare /admin is pre-empted by the pages.dev platform (308 to /) once a
+# project uses Functions, so it must be an explicit redirect to /admin/.
+/admin /admin/ 301
+/admin/ /index.html 200
 /admin/* /index.html 200
-/admin /index.html 200
 /* /index.html 200
