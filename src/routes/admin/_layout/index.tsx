@@ -1,4 +1,4 @@
-﻿import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { BookHeart, BookOpen, ClipboardList, Eye, Star } from 'lucide-react'
 import { SpinnerScreen } from '@/components/ui/Spinner'
 import { ErrorBanner } from '@/components/ui/Fields'
@@ -47,7 +47,7 @@ function AdminDashboardRoute() {
   const books = useAllBooks()
   const orders = useOrders()
 
-  if (books.loading || orders.loading) return <SpinnerScreen label="Loading dashboardâ€¦" />
+  if (books.loading || orders.loading) return <SpinnerScreen label="Loading dashboard..." />
   if (books.error || orders.error) {
     return <ErrorBanner message={books.error ?? orders.error ?? 'Failed to load'} onRetry={books.reload} />
   }

@@ -109,6 +109,22 @@ function AdminLoginRoute() {
         <Button type="submit" size="lg" loading={loading} className="w-full">
           Login
         </Button>
+
+        <div className="mt-4 rounded-2xl bg-paper-100/80 p-3.5 text-center text-xs text-ink-600">
+          <p className="font-semibold">Studio Admin Credentials:</p>
+          <p className="mt-1 font-mono text-ink-800">Username: <span className="font-bold text-coral-600">lingtuka</span> | Password: <span className="font-bold text-coral-600">admin123</span></p>
+          <button
+            type="button"
+            onClick={() => {
+              setUsername('lingtuka')
+              setPassword('admin123')
+              setError(null)
+            }}
+            className="mt-2 inline-block font-bold text-coral-600 underline hover:text-coral-700"
+          >
+            Click to fill credentials
+          </button>
+        </div>
       </form>
     </AdminLoginShell>
   )

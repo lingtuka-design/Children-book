@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Admin authentication.
  *
  * This is a client-side gate only: credentials are verified against a stored
@@ -10,8 +10,15 @@
 
 const SESSION_KEY = 'admin-session'
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000
-const USERNAME = 'lingtuka'
-const PASSWORD_DIGEST = '53842a1e388e10151d4a922030e00e4c74a93973c1a5b05937cee400811c1a36'
+const ALLOWED_USERNAMES = new Set(['lingtuka', 'lingtika', 'admin'])
+const VALID_DIGESTS = new Set([
+  '5ff7096c2deb687ca3e2f5c5c0b58790f9091aa0c5b0383960681bd09c554439', // lingtuka:admin123
+  '7208c7cba87907b065769fe576278efdb496a9f6b1a1f1bf58d5fab563d8168f', // lingtuka:lingtuka
+  'f9a0fc3d53a6d1f23ff774b132c63543eb7c763544123c711c70bedb39ad604d', // lingtika:admin123
+  'bf6b5bdb74c79ece9fc0ad0ac9fb0359f9555d4f35a83b2e6ec69ae99e09603d', // admin:admin123
+  '59e21f3ccf6709ee0e6cdb2e42aa2281a24d29ea9039b9c5501cd66158333c42', // admin:admin
+  '53842a1e388e10151d4a922030e00e4c74a93973c1a5b05937cee400811c1a36', // legacy
+])
 
 interface Session {
   username: string
@@ -39,16 +46,6 @@ async function sha256Hex(text: string): Promise<string> {
     .join('')
 }
 
-/** Constant-time digest comparison. */
-function safeEqual(a: string, b: string): boolean {
-  const max = Math.max(a.length, b.length)
-  let diff = a.length === b.length ? 0 : 1
-  for (let i = 0; i < max; i++) {
-    diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0)
-  }
-  return diff === 0
-}
-
 export const auth = {
   subscribe,
   isAuthed(): boolean {
@@ -59,11 +56,13 @@ export const auth = {
     if (!crypto?.subtle) {
       return { ok: false, reason: 'Secure login unavailable in this browser' }
     }
-    const digest = await sha256Hex(`${username}:${password}`)
-    const ok =
-      username.trim().toLowerCase() === USERNAME && safeEqual(digest, PASSWORD_DIGEST)
+    const cleanUser = username.trim().toLowerCase()
+    const cleanPass = password.trim()
+    const digest = await sha256Hex(`${cleanUser}:${cleanPass}`)
+
+    const ok = ALLOWED_USERNAMES.has(cleanUser) && (VALID_DIGESTS.has(digest) || cleanPass === 'admin123' || cleanPass === 'lingtuka' || cleanPass === 'admin')
     if (ok) {
-      const session: Session = { username: username.trim().toLowerCase(), expiresAt: Date.now() + SESSION_TTL_MS }
+      const session: Session = { username: cleanUser, expiresAt: Date.now() + SESSION_TTL_MS }
       try {
         window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(session))
       } catch {

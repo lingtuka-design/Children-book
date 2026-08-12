@@ -1,4 +1,4 @@
-﻿import { Link } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { createFileRoute } from '@tanstack/react-router'
 import { ArrowRight, BookHeart, Sparkles, Users } from 'lucide-react'
 import { PublicLayout } from '@/components/layout/PublicLayout'
@@ -46,7 +46,7 @@ function HomeRoute() {
             {HERO_MESSAGE}
           </h1>
           <p className="animate-fade-up mx-auto mt-5 max-w-xl text-lg text-ink-500" style={{ animationDelay: '160ms' }}>
-            Your child becomes the hero of their very own picture book â€” written, illustrated, and printed just for them.
+            Your child becomes the hero of their very own picture book — written, illustrated, and printed just for them.
           </p>
           <div className="animate-fade-up mt-9" style={{ animationDelay: '240ms' }}>
             <Link
@@ -71,8 +71,8 @@ function HomeRoute() {
       <section className="container-site py-12" aria-labelledby="latest-heading">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 id="latest-heading" className="heading-display text-3xl">Latest Children&rsquo;s Books</h2>
-            <p className="mt-1 text-ink-500">Fresh from the studio â€” tap a cover to read it page by page.</p>
+            <h2 id="latest-heading" className="heading-display text-3xl">Latest Children's Books</h2>
+            <p className="mt-1 text-ink-500">Fresh from the studio — tap a cover to read it page by page.</p>
           </div>
           <Link to="/books" className="inline-flex items-center gap-1.5 font-bold text-coral-600 hover:underline">
             Browse all books <ArrowRight className="size-4" />
@@ -83,7 +83,7 @@ function HomeRoute() {
         {error && <ErrorBanner message={error} onRetry={reload} />}
         {!loading && !error && books && books.length === 0 && (
           <p className="rounded-2xl bg-paper-100 px-6 py-12 text-center text-ink-500">
-            Books are being illustrated â€” check back soon!
+            Books are being illustrated — check back soon!
           </p>
         )}
         {visible.length > 0 && (
