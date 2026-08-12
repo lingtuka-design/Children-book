@@ -38,7 +38,7 @@ const Page = React.forwardRef<
             src={page.url}
             alt={`Book page ${number}`}
             draggable={false}
-            className="h-full w-full object-contain select-none"
+            className="h-full w-full object-fill select-none"
           />
         )}
 
@@ -131,12 +131,12 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [fullscreen, setFullscreen] = useState(false)
 
-  /* Requirement 3: Dynamic Responsive Dimensions with Fallback Width */
+  /* Dynamic Responsive Dimensions for 4:3 Landscape Interior Pages (Height = Width * 0.75) */
   const [dimensions, setDimensions] = useState<{ width: number; height: number }>(() => {
     const initialWidth = Math.min(typeof window !== 'undefined' ? window.innerWidth - 32 : 900, 1024)
     const isPortrait = typeof window !== 'undefined' ? window.innerWidth < 768 : false
     const pageW = isPortrait ? initialWidth : Math.floor(initialWidth / 2)
-    const pageH = Math.floor(pageW * 1.333)
+    const pageH = Math.floor(pageW * 0.75) // 4:3 Landscape ratio
     return { width: pageW, height: pageH }
   })
 
@@ -147,7 +147,7 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
       const isPortrait = window.innerWidth < 768
       const effectiveWidth = Math.max(300, Math.min(containerWidth, 1024))
       const pageW = isPortrait ? effectiveWidth : Math.floor(effectiveWidth / 2)
-      const pageH = Math.floor(pageW * 1.333)
+      const pageH = Math.floor(pageW * 0.75) // 4:3 Landscape ratio
       setDimensions({ width: pageW, height: pageH })
     }
 

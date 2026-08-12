@@ -314,7 +314,7 @@ var onRequestGet5 = /* @__PURE__ */ __name(async ({ env }) => {
   return json({ styles });
 }, "onRequestGet");
 
-// ../.wrangler/tmp/pages-3xE6mN/functionsRoutes-0.27699456173817794.mjs
+// ../.wrangler/tmp/pages-lLIT8I/functionsRoutes-0.7347056689226291.mjs
 var routes = [
   {
     routePath: "/api/assets/:key*",
