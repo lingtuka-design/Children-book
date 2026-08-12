@@ -12,7 +12,7 @@ import {
 import type { ReaderPage } from '@/services/types'
 import { cn } from '@/lib/utils'
 
-const TURN_MS = 900
+const TURN_MS = 750
 const SWIPE_THRESHOLD = 60
 
 interface BookReaderProps {
@@ -26,30 +26,60 @@ type FlipState = { dir: 1 | -1 } | null
 
 function PageFace({
   page,
-  dark = false,
   side,
+  dark = false,
 }: {
-  page: ReaderPage
-  dark?: boolean
+  page?: ReaderPage
   side: 'left' | 'right' | 'single'
+  dark?: boolean
 }) {
-  const corner =
-    side === 'left' ? 'rounded-l-md' : side === 'right' ? 'rounded-r-md' : 'rounded-md'
-  if (page.blank) {
+  if (!page || page.blank) {
     return (
       <div
-        className={cn('paper-blank relative h-full w-full overflow-hidden', corner, dark && 'brightness-90')}
+        className={cn(
+          'paper-blank relative h-full w-full overflow-hidden shadow-sm',
+          side === 'left' && 'rounded-l-lg border-r border-paper-300/40',
+          side === 'right' && 'rounded-r-lg border-l border-paper-300/40',
+          side === 'single' && 'rounded-lg border border-paper-300/40',
+          dark && 'brightness-90',
+        )}
         aria-hidden="true"
-      />
+      >
+        {/* Subtle page spine fold shadow */}
+        <div
+          className={cn(
+            'pointer-events-none absolute inset-y-0 w-8',
+            side === 'left' && 'right-0 bg-gradient-to-l from-black/10 to-transparent',
+            side === 'right' && 'left-0 bg-gradient-to-r from-black/10 to-transparent',
+          )}
+        />
+      </div>
     )
   }
+
   return (
-    <div className={cn('relative h-full w-full overflow-hidden bg-white', corner, dark && 'brightness-90')}>
+    <div
+      className={cn(
+        'relative h-full w-full overflow-hidden bg-white shadow-sm',
+        side === 'left' && 'rounded-l-lg border-r border-paper-300/30',
+        side === 'right' && 'rounded-r-lg border-l border-paper-300/30',
+        side === 'single' && 'rounded-lg border border-paper-300/30',
+        dark && 'brightness-90',
+      )}
+    >
       <img
         src={page.url}
         alt={`Book page ${page.index + 1}`}
         draggable={false}
         className="h-full w-full select-none object-contain"
+      />
+      {/* Inner spine shadow on paper edge */}
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-y-0 w-10',
+          side === 'left' && 'right-0 bg-gradient-to-l from-black/12 to-transparent',
+          side === 'right' && 'left-0 bg-gradient-to-r from-black/12 to-transparent',
+        )}
       />
     </div>
   )
@@ -71,25 +101,26 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
   const canPrev = pos > 0
   const canNext = pos < maxPos
 
-  /* Spread/single mode */
+  /* Responsive Spread/single mode */
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 760px)')
+    const mq = window.matchMedia('(min-width: 768px)')
     const update = () => setSpread(mq.matches)
     update()
     mq.addEventListener('change', update)
     return () => mq.removeEventListener('change', update)
   }, [])
 
-  /* Keep pos valid when mode changes */
+  /* Keep pos valid & aligned when mode changes */
   useEffect(() => {
-    if (spread && pos % 2 !== 0) setPos(pos - 1)
+    if (spread && pos % 2 !== 0) setPos(Math.max(0, pos - 1))
     if (!spread && pos > maxPos) setPos(maxPos)
   }, [spread, pos, maxPos])
 
   const turn = useCallback(
     (dir: 1 | -1) => {
       if (busy) return
-      const to = pos + dir * viewCount
+      const step = spread ? 2 : 1
+      const to = pos + dir * step
       if (to < 0 || to > maxPos) return
       setFlip({ dir })
       setBusy(true)
@@ -99,16 +130,17 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
         setBusy(false)
       }, TURN_MS)
     },
-    [busy, pos, viewCount, maxPos],
+    [busy, pos, spread, maxPos],
   )
 
   const jump = useCallback(
     (to: number) => {
       if (busy) return
-      const clamped = Math.max(0, Math.min(to, maxPos))
-      setPos(clamped)
+      let target = Math.max(0, Math.min(to, maxPos))
+      if (spread && target % 2 !== 0) target = Math.max(0, target - 1)
+      setPos(target)
     },
-    [busy, maxPos],
+    [busy, spread, maxPos],
   )
 
   /* Keyboard navigation */
@@ -147,23 +179,53 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
     }
   }, [])
 
-  const underIndex = useMemo(() => {
-    if (!flip) return -1
-    if (flip.dir === 1) return pos + viewCount
-    return spread ? pos - 2 : pos - 1
-  }, [flip, pos, viewCount, spread])
+  /* Page Index calculations during 3D flip */
+  const flipPages = useMemo(() => {
+    if (!flip) return null
 
-  const flipFront = useMemo(() => {
-    if (!flip) return -1
-    if (flip.dir === 1) return spread ? pos + 1 : pos
-    return pos
-  }, [flip, spread, pos])
-
-  const flipBack = useMemo(() => {
-    if (!flip) return -1
-    if (flip.dir === 1) return pos + viewCount
-    return spread ? pos - 1 : pos - 1
-  }, [flip, spread, pos, viewCount])
+    if (spread) {
+      if (flip.dir === 1) {
+        // Next: Right page (pos+1) turns over to become Left page (pos+2)
+        return {
+          underLeft: pages[pos],
+          underRight: pages[pos + 3],
+          front: pages[pos + 1], // Right side facing 0deg
+          back: pages[pos + 2],  // Left side facing -180deg
+          frontSide: 'right' as const,
+          backSide: 'left' as const,
+        }
+      } else {
+        // Previous: Left page (pos) turns back to become Right page (pos-1)
+        return {
+          underLeft: pages[pos - 2],
+          underRight: pages[pos + 1],
+          front: pages[pos],      // Left side facing 0deg
+          back: pages[pos - 1],   // Right side facing 180deg
+          frontSide: 'left' as const,
+          backSide: 'right' as const,
+        }
+      }
+    } else {
+      // Single Page Mode
+      if (flip.dir === 1) {
+        return {
+          underPage: pages[pos + 1],
+          front: pages[pos],
+          back: pages[pos + 1],
+          frontSide: 'single' as const,
+          backSide: 'single' as const,
+        }
+      } else {
+        return {
+          underPage: pages[pos],
+          front: pages[pos - 1],
+          back: pages[pos],
+          frontSide: 'single' as const,
+          backSide: 'single' as const,
+        }
+      }
+    }
+  }, [flip, spread, pos, pages])
 
   const pointerHandlers = {
     onPointerDown: (e: React.PointerEvent) => {
@@ -207,99 +269,151 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
         className,
       )}
     >
-      <div className={cn('book-3d flex w-full items-center justify-center', immersive ? 'min-h-0 flex-1' : 'mx-auto max-w-4xl')}>
+      <div className={cn('book-3d flex w-full items-center justify-center', immersive ? 'min-h-0 flex-1' : 'mx-auto max-w-5xl')}>
         <div
           className={cn(
-            'relative w-full touch-pan-y select-none overflow-hidden rounded-lg bg-paper-200 shadow-book ring-1 ring-ink-900/10',
+            'relative w-full touch-pan-y select-none rounded-xl bg-paper-300/80 shadow-book ring-1 ring-ink-900/15',
             spread ? 'aspect-[8/3]' : 'aspect-[4/3]',
-            !immersive && (spread ? '' : 'max-w-2xl'),
+            !immersive && (spread ? '' : 'max-w-xl'),
           )}
           style={{
             cursor: 'pointer',
             ...(immersive ? { height: '100%', aspectRatio: spread ? '8 / 3' : '4 / 3', maxWidth: '100%' } : {}),
           }}
-          aria-label="Book reader — swipe or use the buttons to turn pages"
+          aria-label="Book reader — tap left/right or swipe to turn pages"
           {...pointerHandlers}
         >
-          {/* left static page (spread only) */}
-          {spread && !(flip && flip.dir === -1) && (
-            <div className="absolute inset-y-0 left-0 z-10 w-1/2">
-              <PageFace page={pages[pos]} side="left" />
-            </div>
+          {/* STATIC VIEW (NO FLIP ACTIVE) */}
+          {!flip && (
+            <>
+              {spread ? (
+                <>
+                  {/* Left Static Page */}
+                  <div className="absolute inset-y-0 left-0 w-1/2">
+                    <PageFace page={pages[pos]} side="left" />
+                  </div>
+                  {/* Right Static Page */}
+                  <div className="absolute inset-y-0 right-0 w-1/2">
+                    <PageFace page={pages[pos + 1]} side="right" />
+                  </div>
+                </>
+              ) : (
+                /* Single Mode Static Page */
+                <div className="absolute inset-y-0 left-0 w-full">
+                  <PageFace page={pages[pos]} side="single" />
+                </div>
+              )}
+            </>
           )}
 
-          {/* right static page (spread only) */}
-          {spread && !flip && (
-            <div className="absolute inset-y-0 right-0 w-1/2">
-              <PageFace page={pages[pos + 1]} side="right" />
-            </div>
+          {/* DYNAMIC 3D FLIPPING ACTIVE */}
+          {flip && flipPages && (
+            <>
+              {spread ? (
+                <>
+                  {/* Underneath Left Page */}
+                  <div className="absolute inset-y-0 left-0 z-10 w-1/2">
+                    <PageFace page={flipPages.underLeft} side="left" />
+                    {/* Shadow overlay during flip */}
+                    {flip.dir === -1 && (
+                      <div className="shadow-anim-left pointer-events-none absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
+                    )}
+                  </div>
+
+                  {/* Underneath Right Page */}
+                  <div className="absolute inset-y-0 right-0 z-10 w-1/2">
+                    <PageFace page={flipPages.underRight} side="right" />
+                    {/* Shadow overlay during flip */}
+                    {flip.dir === 1 && (
+                      <div className="shadow-anim-right pointer-events-none absolute inset-0 bg-gradient-to-l from-black/40 to-transparent" />
+                    )}
+                  </div>
+
+                  {/* Turning 3D Leaf */}
+                  <div
+                    className={cn(
+                      'absolute inset-y-0 z-30 w-1/2',
+                      flip.dir === 1 ? 'left-1/2 origin-left' : 'left-0 origin-right',
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'relative h-full w-full',
+                        flip.dir === 1 ? 'flip-anim-fwd' : 'flip-anim-back',
+                      )}
+                    >
+                      {/* Front Face */}
+                      <div className="flip-face absolute inset-0">
+                        <PageFace page={flipPages.front} side={flipPages.frontSide} />
+                        {/* Dynamic page curvature highlight */}
+                        <div className="shine-anim pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+                      </div>
+
+                      {/* Back Face */}
+                      <div className="flip-back flip-face absolute inset-0">
+                        <PageFace page={flipPages.back} side={flipPages.backSide} />
+                        {/* Dynamic page curvature highlight */}
+                        <div className="shine-anim pointer-events-none absolute inset-0 bg-gradient-to-l from-transparent via-white/30 to-transparent" />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* Single Page 3D Flip */
+                <>
+                  {/* Underneath Single Page */}
+                  <div className="absolute inset-y-0 left-0 z-10 w-full">
+                    <PageFace page={flipPages.underPage} side="single" />
+                  </div>
+
+                  {/* Turning Single Leaf */}
+                  <div
+                    className={cn(
+                      'absolute inset-y-0 z-30 w-full',
+                      flip.dir === 1 ? 'left-0 origin-left' : 'left-0 origin-right',
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'relative h-full w-full',
+                        flip.dir === 1 ? 'flip-anim-fwd' : 'flip-anim-back',
+                      )}
+                    >
+                      <div className="flip-face absolute inset-0">
+                        <PageFace page={flipPages.front} side="single" />
+                      </div>
+                      <div className="flip-back flip-face absolute inset-0">
+                        <PageFace page={flipPages.back} side="single" />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </>
           )}
 
-          {/* single-mode static page (the full page) */}
-          {!spread && !flip && (
-            <div className="absolute inset-y-0 left-0 w-full">
-              <PageFace page={pages[pos]} side="single" />
-            </div>
+          {/* Center Book Spine Line & Crease Depth Shadow */}
+          {spread && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 left-1/2 z-40 w-4 -translate-x-1/2"
+              style={{
+                background:
+                  'linear-gradient(to right, transparent 0%, rgba(30,20,10,0.18) 35%, rgba(30,20,10,0.38) 50%, rgba(30,20,10,0.18) 65%, transparent 100%)',
+              }}
+            />
           )}
 
-          {/* spine shadow */}
+          {/* Outer Book Vignette */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 left-1/2 z-20 w-px -translate-x-1/2"
-            style={{
-              background:
-                'linear-gradient(to right, transparent 0%, rgb(74 63 51 / 0.35) 25%, rgb(74 63 51 / 0.5) 50%, rgb(74 63 51 / 0.35) 75%, transparent 100%)',
-            }}
-          />
-
-          {/* under page visible through the turning gap */}
-          {flip && underIndex >= 0 && underIndex < total && (
-            <div
-              className={cn(
-                'absolute inset-y-0 z-0',
-                flip.dir === 1 ? (spread ? 'right-0 w-1/2' : 'left-0 w-full') : spread ? 'left-0 w-1/2' : 'left-0 w-full',
-              )}
-            >
-              <PageFace page={pages[underIndex]} dark side="single" />
-            </div>
-          )}
-
-          {/* flipping page */}
-          {flip && flipFront >= 0 && flipBack >= 0 && (
-            <div
-              className={cn(
-                'absolute inset-y-0 z-30',
-                spread ? 'w-1/2' : 'w-full',
-                flip.dir === 1 ? 'left-1/2 origin-left' : spread ? 'left-0 origin-right' : 'left-0 origin-left',
-              )}
-            >
-              <div
-                className={cn(
-                  'relative h-full w-full',
-                  flip.dir === 1 ? 'flip-anim-fwd' : 'flip-anim-back',
-                )}
-                style={{ transformStyle: 'preserve-3d' }}
-              >
-                <div className="flip-face absolute inset-0">
-                  <PageFace page={pages[flipFront]} side={flip.dir === 1 ? (spread ? 'right' : 'single') : spread ? 'left' : 'single'} />
-                </div>
-                <div className="flip-back flip-face absolute inset-0">
-                  <PageFace page={pages[flipBack]} side={flip.dir === 1 ? (spread ? 'left' : 'single') : spread ? 'right' : 'single'} />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* subtle vignette */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-20 rounded-lg"
-            style={{ boxShadow: 'inset 0 0 60px rgb(46 40 32 / 0.14)' }}
+            className="pointer-events-none absolute inset-0 z-40 rounded-xl"
+            style={{ boxShadow: 'inset 0 0 35px rgb(46 40 32 / 0.16)' }}
           />
         </div>
       </div>
 
-      {/* controls */}
+      {/* Reader Controls Bar */}
       <div className={cn('mx-auto flex w-full items-center justify-center gap-1', immersive ? 'max-w-xl' : 'max-w-2xl')}>
         <button type="button" className={cn(ctrlBtn, 'hidden size-10 sm:flex')} aria-label="First page" disabled={!canPrev} onClick={() => jump(0)}>
           <SkipBack className="size-5" />
@@ -370,7 +484,7 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
         <span className="hidden sm:inline">Use arrow keys · </span>
         <RotateCw className="mr-0.5 inline size-3.5" />
         <RotateCcw className="mr-0.5 inline size-3.5" />
-        Swipe to turn pages
+        Tap sides or swipe to turn pages
       </p>
     </div>
   )
