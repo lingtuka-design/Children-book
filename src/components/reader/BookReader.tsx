@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import HTMLFlipBook from 'react-pageflip'
 import {
-  ChevronLeft,
-  ChevronRight,
+  ArrowLeft,
+  ArrowRight,
   Maximize,
   Minimize,
-  RotateCcw,
-  RotateCw,
   SkipBack,
   SkipForward,
   Volume2,
@@ -14,83 +13,70 @@ import {
 import type { ReaderPage } from '@/services/types'
 import { cn } from '@/lib/utils'
 
-const TURN_MS = 750
-const SWIPE_THRESHOLD = 60
-
 interface BookReaderProps {
   pages: ReaderPage[]
   className?: string
-  /** 'immersive' fills the viewport (used by the Read overlay). */
   variant?: 'embedded' | 'immersive'
 }
 
-type FlipState = { dir: 1 | -1 } | null
-
-function PageFace({
-  page,
-  side,
-  dark = false,
-}: {
-  page?: ReaderPage
-  side: 'left' | 'right' | 'single'
-  dark?: boolean
-}) {
-  if (!page || page.blank) {
-    return (
-      <div
-        className={cn(
-          'paper-blank relative h-full w-full overflow-hidden shadow-sm',
-          side === 'left' && 'rounded-l-lg border-r border-paper-300/40',
-          side === 'right' && 'rounded-r-lg border-l border-paper-300/40',
-          side === 'single' && 'rounded-lg border border-paper-300/40',
-          dark && 'brightness-90',
-        )}
-        aria-hidden="true"
-      >
-        {/* Subtle page spine fold shadow */}
-        <div
-          className={cn(
-            'pointer-events-none absolute inset-y-0 w-8',
-            side === 'left' && 'right-0 bg-gradient-to-l from-black/10 to-transparent',
-            side === 'right' && 'left-0 bg-gradient-to-r from-black/10 to-transparent',
-          )}
-        />
-      </div>
-    )
-  }
-
+/* Page Component wrapped with React.forwardRef for react-pageflip DOM ref handling */
+const Page = React.forwardRef<
+  HTMLDivElement,
+  { page: ReaderPage; number: number; total: number }
+>(({ page, number, total }, ref) => {
   return (
     <div
-      className={cn(
-        'relative h-full w-full overflow-hidden bg-white shadow-sm',
-        side === 'left' && 'rounded-l-lg border-r border-paper-300/30',
-        side === 'right' && 'rounded-r-lg border-l border-paper-300/30',
-        side === 'single' && 'rounded-lg border border-paper-300/30',
-        dark && 'brightness-90',
-      )}
+      ref={ref}
+      className="page relative h-full w-full overflow-hidden bg-white shadow-md select-none border border-paper-300/40"
+      data-density="soft"
     >
-      <img
-        src={page.url}
-        alt={`Book page ${page.index + 1}`}
-        draggable={false}
-        className="h-full w-full select-none object-contain"
-      />
-      {/* Inner spine shadow on paper edge */}
-      <div
-        className={cn(
-          'pointer-events-none absolute inset-y-0 w-10',
-          side === 'left' && 'right-0 bg-gradient-to-l from-black/12 to-transparent',
-          side === 'right' && 'left-0 bg-gradient-to-r from-black/12 to-transparent',
+      <div className="relative h-full w-full">
+        {page.blank ? (
+          <div className="paper-blank relative h-full w-full" aria-hidden="true" />
+        ) : (
+          <img
+            src={page.url}
+            alt={`Book page ${number}`}
+            draggable={false}
+            className="h-full w-full object-contain select-none"
+          />
         )}
-      />
+
+        {/* Paper Spine & Crease Depth Overlay */}
+        <div
+          className="pointer-events-none absolute inset-y-0 w-8"
+          style={{
+            background:
+              number % 2 === 0
+                ? 'linear-gradient(to right, rgba(0,0,0,0.12) 0%, transparent 100%)'
+                : 'linear-gradient(to left, rgba(0,0,0,0.12) 0%, transparent 100%)',
+            right: number % 2 === 0 ? 'auto' : 0,
+            left: number % 2 === 0 ? 0 : 'auto',
+          }}
+        />
+
+        {/* Page Number Indicator */}
+        {!page.blank && (
+          <span
+            className={cn(
+              'absolute bottom-2 text-xs font-bold text-ink-500/70 select-none px-3',
+              number % 2 === 0 ? 'left-2' : 'right-2',
+            )}
+          >
+            {number} / {total}
+          </span>
+        )}
+      </div>
     </div>
   )
-}
+})
+Page.displayName = 'Page'
 
 function playPageTurnSound() {
   try {
     const AudioContextClass =
-      window.AudioContext || (window as unknown as { webkitAudioContext: typeof window.AudioContext }).webkitAudioContext
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof window.AudioContext }).webkitAudioContext
     if (!AudioContextClass) return
     const ctx = new AudioContextClass()
     const bufferSize = Math.floor(ctx.sampleRate * 0.14)
@@ -137,85 +123,53 @@ function playPageTurnSound() {
 export function BookReader({ pages, className, variant = 'embedded' }: BookReaderProps) {
   const total = pages.length
   const immersive = variant === 'immersive'
+  const containerRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
-  const [spread, setSpread] = useState(false)
-  const [pos, setPos] = useState(0)
-  const [flip, setFlip] = useState<FlipState>(null)
-  const [busy, setBusy] = useState(false)
+  const flipBookRef = useRef<any>(null)
+
+  const [currentPage, setCurrentPage] = useState(0)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [fullscreen, setFullscreen] = useState(false)
-  const dragRef = useRef<{ x: number; y: number; moved: boolean } | null>(null)
 
-  const viewCount = spread ? 2 : 1
-  const maxPos = total - viewCount
-  const canPrev = pos > 0
-  const canNext = pos < maxPos
+  /* Requirement 3: Dynamic Responsive Dimensions with Fallback Width */
+  const [dimensions, setDimensions] = useState<{ width: number; height: number }>(() => {
+    const initialWidth = Math.min(typeof window !== 'undefined' ? window.innerWidth - 32 : 900, 1024)
+    const isPortrait = typeof window !== 'undefined' ? window.innerWidth < 768 : false
+    const pageW = isPortrait ? initialWidth : Math.floor(initialWidth / 2)
+    const pageH = Math.floor(pageW * 1.333)
+    return { width: pageW, height: pageH }
+  })
 
-  /* Responsive Spread/single mode */
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 768px)')
-    const update = () => setSpread(mq.matches)
-    update()
-    mq.addEventListener('change', update)
-    return () => mq.removeEventListener('change', update)
-  }, [])
-
-  /* Keep pos valid & aligned when mode changes */
-  useEffect(() => {
-    if (spread && pos % 2 !== 0) setPos(Math.max(0, pos - 1))
-    if (!spread && pos > maxPos) setPos(maxPos)
-  }, [spread, pos, maxPos])
-
-  const turn = useCallback(
-    (dir: 1 | -1) => {
-      if (busy) return
-      const step = spread ? 2 : 1
-      const to = pos + dir * step
-      if (to < 0 || to > maxPos) return
-      if (soundEnabled) playPageTurnSound()
-      setFlip({ dir })
-      setBusy(true)
-      window.setTimeout(() => {
-        setPos(to)
-        setFlip(null)
-        setBusy(false)
-      }, TURN_MS)
-    },
-    [busy, pos, spread, maxPos, soundEnabled],
-  )
-
-  const jump = useCallback(
-    (to: number) => {
-      if (busy) return
-      let target = Math.max(0, Math.min(to, maxPos))
-      if (spread && target % 2 !== 0) target = Math.max(0, target - 1)
-      setPos(target)
-    },
-    [busy, spread, maxPos],
-  )
-
-  /* Keyboard navigation */
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
-        e.preventDefault()
-        turn(1)
-      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-        e.preventDefault()
-        turn(-1)
-      } else if (e.key === 'Home') {
-        e.preventDefault()
-        jump(0)
-      } else if (e.key === 'End') {
-        e.preventDefault()
-        jump(maxPos)
-      }
+    const updateDimensions = () => {
+      const containerWidth =
+        containerRef.current?.clientWidth || Math.min(window.innerWidth - 32, 1024)
+      const isPortrait = window.innerWidth < 768
+      const effectiveWidth = Math.max(300, Math.min(containerWidth, 1024))
+      const pageW = isPortrait ? effectiveWidth : Math.floor(effectiveWidth / 2)
+      const pageH = Math.floor(pageW * 1.333)
+      setDimensions({ width: pageW, height: pageH })
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [turn, jump, maxPos])
 
-  /* Fullscreen */
+    updateDimensions()
+
+    const observer = new ResizeObserver(() => {
+      updateDimensions()
+    })
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current)
+    }
+
+    window.addEventListener('resize', updateDimensions)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', updateDimensions)
+    }
+  }, [pages, pages.length])
+
+  /* Fullscreen Change Handler */
   useEffect(() => {
     const onChange = () => setFullscreen(Boolean(document.fullscreenElement))
     document.addEventListener('fullscreenchange', onChange)
@@ -230,78 +184,57 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
     }
   }, [])
 
-  /* Page Index calculations during 3D flip */
-  const flipPages = useMemo(() => {
-    if (!flip) return null
+  /* External Navigation Control Handlers via flipBookRef */
+  const handlePrev = useCallback(() => {
+    if (soundEnabled) playPageTurnSound()
+    flipBookRef.current?.pageFlip()?.flipPrev()
+  }, [soundEnabled])
 
-    if (spread) {
-      if (flip.dir === 1) {
-        // Next: Right page (pos+1) turns over to become Left page (pos+2)
-        return {
-          underLeft: pages[pos],
-          underRight: pages[pos + 3],
-          front: pages[pos + 1], // Right side facing 0deg
-          back: pages[pos + 2],  // Left side facing -180deg
-          frontSide: 'right' as const,
-          backSide: 'left' as const,
-        }
-      } else {
-        // Previous: Left page (pos) turns back to become Right page (pos-1)
-        return {
-          underLeft: pages[pos - 2],
-          underRight: pages[pos + 1],
-          front: pages[pos],      // Left side facing 0deg
-          back: pages[pos - 1],   // Right side facing 180deg
-          frontSide: 'left' as const,
-          backSide: 'right' as const,
-        }
-      }
-    } else {
-      // Single Page Mode
-      if (flip.dir === 1) {
-        return {
-          underPage: pages[pos + 1],
-          front: pages[pos],
-          back: pages[pos + 1],
-          frontSide: 'single' as const,
-          backSide: 'single' as const,
-        }
-      } else {
-        return {
-          underPage: pages[pos],
-          front: pages[pos - 1],
-          back: pages[pos],
-          frontSide: 'single' as const,
-          backSide: 'single' as const,
-        }
+  const handleNext = useCallback(() => {
+    if (soundEnabled) playPageTurnSound()
+    flipBookRef.current?.pageFlip()?.flipNext()
+  }, [soundEnabled])
+
+  const handleFirst = useCallback(() => {
+    if (soundEnabled) playPageTurnSound()
+    flipBookRef.current?.pageFlip()?.flip(0)
+  }, [soundEnabled])
+
+  const handleLast = useCallback(() => {
+    if (soundEnabled) playPageTurnSound()
+    flipBookRef.current?.pageFlip()?.flip(total - 1)
+  }, [soundEnabled, total])
+
+  /* Keyboard Navigation */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        e.preventDefault()
+        handleNext()
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault()
+        handlePrev()
+      } else if (e.key === 'Home') {
+        e.preventDefault()
+        handleFirst()
+      } else if (e.key === 'End') {
+        e.preventDefault()
+        handleLast()
       }
     }
-  }, [flip, spread, pos, pages])
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [handleNext, handlePrev, handleFirst, handleLast])
 
-  const pointerHandlers = {
-    onPointerDown: (e: React.PointerEvent) => {
-      dragRef.current = { x: e.clientX, y: e.clientY, moved: false }
+  const handleFlip = useCallback(
+    (e: { data: number }) => {
+      setCurrentPage(e.data)
+      if (soundEnabled) playPageTurnSound()
     },
-    onPointerUp: (e: React.PointerEvent) => {
-      const start = dragRef.current
-      dragRef.current = null
-      if (!start) return
-      const dx = e.clientX - start.x
-      const dy = e.clientY - start.y
-      if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy) * 1.4) {
-        if (dx < 0) turn(1)
-        else turn(-1)
-      } else if (Math.abs(dx) + Math.abs(dy) < 8) {
-        const rect = e.currentTarget.getBoundingClientRect()
-        const leftHalf = e.clientX < rect.left + rect.width / 2
-        if (leftHalf) turn(-1)
-        else turn(1)
-      }
-    },
-  }
+    [soundEnabled],
+  )
 
-  const label = spread ? `Pages ${pos + 1}–${pos + 2} of ${total}` : `Page ${pos + 1} of ${total}`
-  const progress = ((pos + viewCount) / total) * 100
+  const progress = ((currentPage + 1) / total) * 100
 
   const ctrlBtn = cn(
     'items-center justify-center rounded-xl transition-colors disabled:opacity-35 disabled:cursor-not-allowed',
@@ -320,166 +253,85 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
         className,
       )}
     >
-      <div className={cn('book-3d flex w-full items-center justify-center', immersive ? 'min-h-0 flex-1' : 'mx-auto max-w-5xl')}>
-        <div
-          className={cn(
-            'relative w-full touch-pan-y select-none rounded-xl bg-paper-300/80 shadow-book ring-1 ring-ink-900/15',
-            spread ? 'aspect-[8/3]' : 'aspect-[4/3]',
-            !immersive && (spread ? '' : 'max-w-xl'),
-          )}
-          style={{
-            cursor: 'pointer',
-            ...(immersive ? { height: '100%', aspectRatio: spread ? '8 / 3' : '4 / 3', maxWidth: '100%' } : {}),
-          }}
-          aria-label="Book reader — tap left/right or swipe to turn pages"
-          {...pointerHandlers}
-        >
-          {/* STATIC VIEW (NO FLIP ACTIVE) */}
-          {!flip && (
-            <>
-              {spread ? (
-                <>
-                  {/* Left Static Page */}
-                  <div className="absolute inset-y-0 left-0 w-1/2">
-                    <PageFace page={pages[pos]} side="left" />
-                  </div>
-                  {/* Right Static Page */}
-                  <div className="absolute inset-y-0 right-0 w-1/2">
-                    <PageFace page={pages[pos + 1]} side="right" />
-                  </div>
-                </>
-              ) : (
-                /* Single Mode Static Page */
-                <div className="absolute inset-y-0 left-0 w-full">
-                  <PageFace page={pages[pos]} side="single" />
-                </div>
-              )}
-            </>
-          )}
-
-          {/* DYNAMIC 3D FLIPPING ACTIVE */}
-          {flip && flipPages && (
-            <>
-              {spread ? (
-                <>
-                  {/* Underneath Left Page */}
-                  <div className="absolute inset-y-0 left-0 z-10 w-1/2">
-                    <PageFace page={flipPages.underLeft} side="left" />
-                    {/* Shadow overlay during flip */}
-                    {flip.dir === -1 && (
-                      <div className="shadow-anim-left pointer-events-none absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
-                    )}
-                  </div>
-
-                  {/* Underneath Right Page */}
-                  <div className="absolute inset-y-0 right-0 z-10 w-1/2">
-                    <PageFace page={flipPages.underRight} side="right" />
-                    {/* Shadow overlay during flip */}
-                    {flip.dir === 1 && (
-                      <div className="shadow-anim-right pointer-events-none absolute inset-0 bg-gradient-to-l from-black/40 to-transparent" />
-                    )}
-                  </div>
-
-                  {/* Turning 3D Leaf */}
-                  <div
-                    className={cn(
-                      'absolute inset-y-0 z-30 w-1/2',
-                      flip.dir === 1 ? 'left-1/2 origin-left' : 'left-0 origin-right',
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        'relative h-full w-full',
-                        flip.dir === 1 ? 'flip-anim-fwd' : 'flip-anim-back',
-                      )}
-                    >
-                      {/* Front Face */}
-                      <div className="flip-face absolute inset-0">
-                        <PageFace page={flipPages.front} side={flipPages.frontSide} />
-                        {/* Dynamic page curvature highlight */}
-                        <div className="shine-anim pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
-                      </div>
-
-                      {/* Back Face */}
-                      <div className="flip-back flip-face absolute inset-0">
-                        <PageFace page={flipPages.back} side={flipPages.backSide} />
-                        {/* Dynamic page curvature highlight */}
-                        <div className="shine-anim pointer-events-none absolute inset-0 bg-gradient-to-l from-transparent via-white/30 to-transparent" />
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                /* Single Page 3D Flip */
-                <>
-                  {/* Underneath Single Page */}
-                  <div className="absolute inset-y-0 left-0 z-10 w-full">
-                    <PageFace page={flipPages.underPage} side="single" />
-                  </div>
-
-                  {/* Turning Single Leaf */}
-                  <div
-                    className={cn(
-                      'absolute inset-y-0 z-30 w-full',
-                      flip.dir === 1 ? 'left-0 origin-left' : 'left-0 origin-right',
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        'relative h-full w-full',
-                        flip.dir === 1 ? 'flip-anim-fwd' : 'flip-anim-back',
-                      )}
-                    >
-                      <div className="flip-face absolute inset-0">
-                        <PageFace page={flipPages.front} side="single" />
-                      </div>
-                      <div className="flip-back flip-face absolute inset-0">
-                        <PageFace page={flipPages.back} side="single" />
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </>
-          )}
-
-          {/* Center Book Spine Line & Crease Depth Shadow */}
-          {spread && (
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-y-0 left-1/2 z-40 w-4 -translate-x-1/2"
-              style={{
-                background:
-                  'linear-gradient(to right, transparent 0%, rgba(30,20,10,0.18) 35%, rgba(30,20,10,0.38) 50%, rgba(30,20,10,0.18) 65%, transparent 100%)',
-              }}
-            />
-          )}
-
-          {/* Outer Book Vignette */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-40 rounded-xl"
-            style={{ boxShadow: 'inset 0 0 35px rgb(46 40 32 / 0.16)' }}
-          />
+      {/* Book Container with ResizeObserver ref */}
+      <div
+        ref={containerRef}
+        className={cn(
+          'flex w-full items-center justify-center overflow-hidden',
+          immersive ? 'min-h-0 flex-1' : 'mx-auto max-w-5xl',
+        )}
+      >
+        <div className="relative flex items-center justify-center p-2 rounded-2xl bg-paper-300/40 shadow-book">
+          {/* Requirement 2: HTMLFlipBook Component with exact specified props */}
+          {/* @ts-ignore - react-pageflip React 19 type compatibility */}
+          <HTMLFlipBook
+            ref={flipBookRef}
+            width={dimensions.width}
+            height={dimensions.height}
+            size="fixed"
+            drawShadow={true}
+            maxShadowOpacity={0.55}
+            flippingTime={600}
+            usePortrait={false}
+            showCover={false}
+            useMouseEvents={true}
+            swipeDistance={30}
+            showPageCorners={true}
+            disableFlipByClick={false}
+            onFlip={handleFlip}
+            className="shadow-2xl rounded-lg overflow-hidden"
+            style={{}}
+            startPage={0}
+            minWidth={280}
+            maxWidth={1024}
+            minHeight={350}
+            maxHeight={1200}
+            startZIndex={0}
+            autoSize={true}
+            mobileScrollSupport={true}
+            clickEventForward={true}
+          >
+            {pages.map((page, idx) => (
+              <Page key={page.index ?? idx} page={page} number={idx + 1} total={total} />
+            ))}
+          </HTMLFlipBook>
         </div>
       </div>
 
-      {/* Reader Controls Bar */}
-      <div className={cn('mx-auto flex w-full items-center justify-center gap-1', immersive ? 'max-w-xl' : 'max-w-2xl')}>
-        <button type="button" className={cn(ctrlBtn, 'hidden size-10 sm:flex')} aria-label="First page" disabled={!canPrev} onClick={() => jump(0)}>
-          <SkipBack className="size-5" />
-        </button>
+      {/* Requirement 4: Explicit External Navigation Controls */}
+      <div
+        className={cn(
+          'mx-auto flex w-full items-center justify-center gap-2',
+          immersive ? 'max-w-xl' : 'max-w-2xl',
+        )}
+      >
         <button
           type="button"
-          className={cn(ctrlBtn, 'flex size-10 gap-1 max-sm:size-auto max-sm:min-w-14 max-sm:px-2', !immersive && 'sm:size-10 sm:min-w-0 sm:px-0')}
-          aria-label="Previous page"
-          disabled={!canPrev}
-          onClick={() => turn(-1)}
+          className={cn(ctrlBtn, 'hidden size-10 sm:flex')}
+          aria-label="First page"
+          disabled={currentPage <= 0}
+          onClick={handleFirst}
         >
-          <ChevronLeft className="size-6" />
-          <span className="text-xs font-extrabold max-sm:inline sm:hidden">Previous</span>
+          <SkipBack className="size-5" />
         </button>
 
+        {/* ← Previous Page button */}
+        <button
+          type="button"
+          className={cn(
+            ctrlBtn,
+            'flex h-11 items-center gap-2 rounded-xl bg-paper-100 px-4 text-sm font-extrabold text-ink-900 border border-paper-300 shadow-sm hover:bg-paper-200 disabled:opacity-40',
+            immersive && 'bg-white/15 text-white border-white/20 hover:bg-white/25',
+          )}
+          aria-label="Previous Page"
+          disabled={currentPage <= 0}
+          onClick={handlePrev}
+        >
+          <ArrowLeft className="size-4" />
+          <span>← Previous Page</span>
+        </button>
+
+        {/* Page counter & progress indicator */}
         <div
           className={cn(
             'flex flex-1 flex-col items-center gap-1 px-2',
@@ -487,9 +339,11 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
           )}
           aria-live="polite"
         >
-          <span className={cn('text-sm font-extrabold', immersive ? 'text-paper-50' : 'text-ink-900')}>{label}</span>
+          <span className={cn('text-sm font-extrabold', immersive ? 'text-paper-50' : 'text-ink-900')}>
+            Page {currentPage + 1} of {total}
+          </span>
           <div
-            className={cn('h-1.5 w-32 overflow-hidden rounded-full', immersive ? 'bg-white/20' : 'bg-paper-200')}
+            className={cn('h-1.5 w-28 overflow-hidden rounded-full', immersive ? 'bg-white/20' : 'bg-paper-200')}
             aria-hidden="true"
           >
             <div
@@ -499,17 +353,28 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
           </div>
         </div>
 
+        {/* Next Page → button */}
         <button
           type="button"
-          className={cn(ctrlBtn, 'flex size-10 gap-1 max-sm:size-auto max-sm:min-w-14 max-sm:px-2', !immersive && 'sm:size-10 sm:min-w-0 sm:px-0')}
-          aria-label="Next page"
-          disabled={!canNext}
-          onClick={() => turn(1)}
+          className={cn(
+            ctrlBtn,
+            'flex h-11 items-center gap-2 rounded-xl bg-coral-500 px-4 text-sm font-extrabold text-white shadow-md hover:bg-coral-600 disabled:opacity-40',
+          )}
+          aria-label="Next Page"
+          disabled={currentPage >= total - 1}
+          onClick={handleNext}
         >
-          <span className="text-xs font-extrabold max-sm:inline sm:hidden">Next</span>
-          <ChevronRight className="size-6" />
+          <span>Next Page →</span>
+          <ArrowRight className="size-4" />
         </button>
-        <button type="button" className={cn(ctrlBtn, 'hidden size-10 sm:flex')} aria-label="Last page" disabled={!canNext} onClick={() => jump(maxPos)}>
+
+        <button
+          type="button"
+          className={cn(ctrlBtn, 'hidden size-10 sm:flex')}
+          aria-label="Last page"
+          disabled={currentPage >= total - 1}
+          onClick={handleLast}
+        >
           <SkipForward className="size-5" />
         </button>
 
@@ -541,10 +406,7 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
         className={cn('text-center text-xs font-semibold', immersive ? 'text-paper-50/60' : 'text-ink-500')}
         aria-hidden="true"
       >
-        <span className="hidden sm:inline">Use arrow keys · </span>
-        <RotateCw className="mr-0.5 inline size-3.5" />
-        <RotateCcw className="mr-0.5 inline size-3.5" />
-        Tap sides or swipe to turn pages
+        Drag page corners or click buttons to turn pages
       </p>
     </div>
   )
