@@ -38,7 +38,7 @@ const Page = React.forwardRef<
             src={page.url}
             alt={`Book page ${number}`}
             draggable={false}
-            className="h-full w-full object-cover select-none"
+            className="h-full w-full object-contain select-none"
           />
         )}
 
