@@ -21,7 +21,12 @@ function HomeRoute() {
   const { data: books, loading, error, reload } = useBooks()
   const [page, setPage] = useState(1)
 
-  const publishedBooks = useMemo(() => (books ?? []).filter((b) => b.published), [books])
+  const publishedBooks = useMemo(() => {
+    const list = (books ?? []).filter((b) => b.published)
+    const featured = list.filter((b) => b.featured)
+    const rest = list.filter((b) => !b.featured)
+    return [...featured, ...rest]
+  }, [books])
   const pageCount = Math.max(1, Math.ceil(publishedBooks.length / PAGE_SIZE))
   const safePage = Math.min(page, pageCount)
   const visible = publishedBooks.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { PublicLayout } from '@/components/layout/PublicLayout'
 import { BookGrid } from '@/components/books/BookCard'
@@ -19,9 +19,15 @@ function BooksRoute() {
   const { data: books, loading, error, reload } = useBooks()
   const [page, setPage] = useState(1)
 
-  const pageCount = Math.max(1, Math.ceil((books?.length ?? 0) / PAGE_SIZE))
+  const publishedBooks = useMemo(() => {
+    const list = (books ?? []).filter((b) => b.published)
+    const featured = list.filter((b) => b.featured)
+    const rest = list.filter((b) => !b.featured)
+    return [...featured, ...rest]
+  }, [books])
+  const pageCount = Math.max(1, Math.ceil(publishedBooks.length / PAGE_SIZE))
   const safePage = Math.min(page, pageCount)
-  const visible = books?.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE) ?? []
+  const visible = publishedBooks.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   return (
     <PublicLayout>
