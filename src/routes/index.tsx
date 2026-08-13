@@ -8,7 +8,7 @@ import { CardSkeletonGrid } from '@/components/ui/Spinner'
 import { ErrorBanner } from '@/components/ui/Fields'
 import { useBooks } from '@/services/hooks'
 import { usePageMeta } from '@/lib/seo'
-import { HERO_MESSAGE, PAGE_SIZE } from '@/lib/constants'
+import { HERO_MESSAGE, HERO_SUBTEXT, PAGE_SIZE } from '@/lib/constants'
 import { useMemo, useState } from 'react'
 
 export const Route = createFileRoute('/')({ component: HomeRoute })
@@ -21,18 +21,10 @@ function HomeRoute() {
   const { data: books, loading, error, reload } = useBooks()
   const [page, setPage] = useState(1)
 
-  /* Top-featured books are placed first in the Latest section (each group
-     stays newest-first, matching the order from the service). */
-  const latest = useMemo(() => {
-    if (!books) return []
-    const featured = books.filter((b) => b.featured)
-    const rest = books.filter((b) => !b.featured)
-    return [...featured, ...rest]
-  }, [books])
-
-  const pageCount = Math.max(1, Math.ceil(latest.length / PAGE_SIZE))
+  const publishedBooks = useMemo(() => (books ?? []).filter((b) => b.published), [books])
+  const pageCount = Math.max(1, Math.ceil(publishedBooks.length / PAGE_SIZE))
   const safePage = Math.min(page, pageCount)
-  const visible = latest.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE) ?? []
+  const visible = publishedBooks.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   return (
     <PublicLayout>
@@ -55,7 +47,7 @@ function HomeRoute() {
             {HERO_MESSAGE}
           </h1>
           <p className="animate-fade-up mx-auto mt-5 max-w-xl text-lg text-ink-500" style={{ animationDelay: '160ms' }}>
-            Your child becomes the hero of their very own picture book — written, illustrated, and printed just for them.
+            {HERO_SUBTEXT}
           </p>
           <div className="animate-fade-up mt-9" style={{ animationDelay: '240ms' }}>
             <Link

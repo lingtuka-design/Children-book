@@ -15,6 +15,9 @@ export const PRICE_LABEL = '₹1,500'
 export const HERO_MESSAGE =
   'I fanu/fapa hmel ngei mai lanna naupang thawnthu bu, a thawnthu pawh i duh dan thlapa i thlan leh duan theih chu Order ve rawh le.'
 
+export const HERO_SUBTEXT =
+  'I fanu/fapa ngei mai chu a changtu ber a rawn ni dawn a ni — a pual bika thawnthu ziah, a lem siam leh chhut chhuah liau liau a ni ang.'
+
 export const PRODUCT = {
   id: 'book-24',
   name: "24-Page Children's Book",
