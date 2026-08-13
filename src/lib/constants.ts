@@ -13,7 +13,7 @@ export const BOOK_PRICE = 1500
 export const PRICE_LABEL = '₹1,500'
 
 export const HERO_MESSAGE =
-  "Order a custom children's book featuring your child's face, with a completely personalized story of your choice."
+  'I fanu/fapa hmel ngei mai lanna naupang thawnthu bu, a chhunga thawnthu pawh i duh dan thlapa i thlan leh duan theih chu Order ve rawh le.'
 
 export const PRODUCT = {
   id: 'book-24',
