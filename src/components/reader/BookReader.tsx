@@ -155,10 +155,24 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
 
   /* Dynamic Responsive Dimensions for 4:3 Landscape Interior Pages (Height = Width * 0.75) */
   const [dimensions, setDimensions] = useState<{ width: number; height: number }>(() => {
-    const initialWidth = Math.min(typeof window !== 'undefined' ? window.innerWidth - 32 : 900, 1024)
+    const winW = typeof window !== 'undefined' ? window.innerWidth : 900
+    const winH = typeof window !== 'undefined' ? window.innerHeight : 700
     const mob = typeof window !== 'undefined' ? window.innerWidth < 768 : false
-    const pageW = mob ? initialWidth : Math.floor(initialWidth / 2)
-    const pageH = Math.floor(pageW * 0.75) // 4:3 Landscape ratio
+    if (mob) {
+      const pageW = Math.max(300, Math.min(winW - 32, 1024))
+      const pageH = Math.floor(pageW * 0.75) // 4:3 Landscape ratio
+      return { width: pageW, height: pageH }
+    }
+    if (immersive) {
+      // Desktop immersive: fill the viewport (almost edge-to-edge) and stay
+      // fully visible vertically — responsive to the monitor size.
+      const availH = Math.max(320, winH - 240)
+      const pageW = Math.max(280, Math.floor(Math.min((winW - 32) / 2, (availH * 4) / 3)))
+      const pageH = Math.floor(pageW * 0.75) // 4:3 Landscape ratio
+      return { width: pageW, height: pageH }
+    }
+    const pageW = Math.max(280, Math.floor((Math.min(winW - 32, 1024) - 16) / 2))
+    const pageH = Math.floor(pageW * 0.75)
     return { width: pageW, height: pageH }
   })
 
@@ -166,9 +180,26 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
     const updateDimensions = () => {
       const containerWidth =
         containerRef.current?.clientWidth || Math.min(window.innerWidth - 32, 1024)
+      const containerHeight = containerRef.current?.clientHeight || 0
       const mob = window.innerWidth < 768
-      const effectiveWidth = Math.max(300, Math.min(containerWidth, 1024))
-      const pageW = mob ? effectiveWidth : Math.floor(effectiveWidth / 2)
+
+      if (mob) {
+        // Mobile single-page view (unchanged)
+        const effectiveWidth = Math.max(300, Math.min(containerWidth, 1024))
+        const pageW = effectiveWidth
+        const pageH = Math.floor(pageW * 0.75) // 4:3 Landscape ratio
+        setDimensions({ width: pageW, height: pageH })
+        return
+      }
+
+      // Desktop spread: grow to almost touch the container edges while
+      // keeping the whole spread visible vertically (responsive per monitor).
+      // Only height-constrain when the container really has a fixed height
+      // (the immersive overlay), so the embedded preview keeps its flow.
+      const availW = Math.max(320, containerWidth - 16)
+      const heightConstrained = immersive && containerHeight > 40
+      const availH = heightConstrained ? containerHeight - 16 : Number.POSITIVE_INFINITY
+      const pageW = Math.max(280, Math.floor(Math.min(availW / 2, (availH * 4) / 3)))
       const pageH = Math.floor(pageW * 0.75) // 4:3 Landscape ratio
       setDimensions({ width: pageW, height: pageH })
     }
@@ -189,7 +220,7 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
       observer.disconnect()
       window.removeEventListener('resize', updateDimensions)
     }
-  }, [pages, pages.length])
+  }, [pages, pages.length, immersive])
 
   /* Fullscreen Change Handler */
   useEffect(() => {
@@ -306,7 +337,7 @@ export function BookReader({ pages, className, variant = 'embedded' }: BookReade
             style={{}}
             startPage={0}
             minWidth={280}
-            maxWidth={1024}
+            maxWidth={1600}
             minHeight={210}
             maxHeight={1200}
             startZIndex={0}
