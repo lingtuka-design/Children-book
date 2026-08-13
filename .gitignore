@@ -25,3 +25,5 @@ dist-ssr
 
 # Router plugin cache
 .tanstack
+
+# Wrangler local build artifacts.wrangler
