@@ -23,6 +23,8 @@ export interface Book {
   published: boolean
   createdAt: string
   updatedAt: string
+  /** 1200×630 PNG social card (cover + excerpt) stored in R2. */
+  ogUrl?: string
 }
 
 /** Lightweight book record without heavy image assets — used for listings. */
@@ -90,6 +92,7 @@ export interface BookDraft {
   pages: BookPageAsset[]
   featured: boolean
   published: boolean
+  ogUrl?: string
 }
 
 export const BLANK_PAGE = Symbol('blank-page')

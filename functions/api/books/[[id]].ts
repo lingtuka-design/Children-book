@@ -13,6 +13,7 @@ interface BookRecord {
   published: boolean
   createdAt: string
   updatedAt: string
+  ogUrl?: string
 }
 
 interface BookDraft extends Omit<BookRecord, 'id' | 'createdAt' | 'updatedAt'> {
@@ -92,6 +93,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request, params }
     pages: [...draft.pages].sort((a, b) => a.pageNumber - b.pageNumber),
     featured: Boolean(draft.featured),
     published: Boolean(draft.published),
+    ogUrl: typeof draft.ogUrl === 'string' ? draft.ogUrl : undefined,
     createdAt: now,
     updatedAt: now,
   }

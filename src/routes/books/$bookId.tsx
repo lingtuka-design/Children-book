@@ -3,6 +3,7 @@ import { Link, useParams, createFileRoute } from '@tanstack/react-router'
 import { ArrowLeft, BookOpen, CalendarDays, UserRound, Wand2 } from 'lucide-react'
 import { PublicLayout } from '@/components/layout/PublicLayout'
 import { ReadOverlay } from '@/components/reader/ReadOverlay'
+import { ShareButton } from '@/components/books/ShareButton'
 import { SpinnerScreen } from '@/components/ui/Spinner'
 import { ErrorBanner } from '@/components/ui/Fields'
 import { Badge, FeaturedBadge } from '@/components/ui/Badge'
@@ -20,6 +21,10 @@ function BookDetailRoute() {
   usePageMeta({
     title: book?.title ?? 'Book',
     description: book?.description,
+    ogImage:
+      book?.ogUrl && typeof window !== 'undefined'
+        ? new URL(book.ogUrl, window.location.origin).href
+        : undefined,
   })
 
   if (loading) {
@@ -102,6 +107,7 @@ function BookDetailRoute() {
               >
                 <Wand2 className="size-5" /> Make one like this
               </Link>
+              <ShareButton book={book} />
             </div>
             <p className="mt-5 text-sm text-ink-500">
               26 pages — page 0 and 25 are the blank inside covers, just like the real book.

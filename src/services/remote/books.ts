@@ -1,5 +1,6 @@
 import type { Book, BookDraft, BookPageAsset, BookSummary } from '../types'
 import { api, isRemoteAssetUrl, uploadAsset } from '../api'
+import { generateOgCard } from '@/lib/og'
 import { slugify } from '@/lib/utils'
 
 const coverCache = new Map<string, string>()
@@ -81,10 +82,27 @@ async function prepareDraft(prefix: string, draft: BookDraft): Promise<BookDraft
   }
 }
 
+/**
+ * Render the 1200×630 social card (cover + title + excerpt) and store it in
+ * R2 so social platforms can preview the book. Best-effort: failures keep the
+ * previously stored card (or none).
+ */
+async function ensureOgCard(id: string, draft: BookDraft, coverChanged: boolean): Promise<string | undefined> {
+  if (!draft.cover || (!coverChanged && draft.ogUrl)) return draft.ogUrl
+  try {
+    const png = await generateOgCard({ coverUrl: draft.cover.url, title: draft.title, description: draft.description })
+    const { url } = await uploadAsset(`og/${id}.png`, png)
+    return url
+  } catch {
+    return draft.ogUrl
+  }
+}
+
 export async function remoteCreateBook(draft: BookDraft): Promise<Book> {
   const existing = await remoteListBooks()
   const id = uniqueSlug(slugify(draft.title), existing)
   const prepared = await prepareDraft(`books/${id}`, draft)
+  prepared.ogUrl = await ensureOgCard(id, prepared, true)
   const { book } = await api<{ book: Book }>('/api/books', {
     method: 'POST',
     body: JSON.stringify({ ...prepared, id }),
@@ -93,7 +111,10 @@ export async function remoteCreateBook(draft: BookDraft): Promise<Book> {
 }
 
 export async function remoteUpdateBook(id: string, draft: BookDraft): Promise<Book> {
+  const existing = await remoteGetBook(id)
   const prepared = await prepareDraft(`books/${id}`, draft)
+  const coverChanged = !existing || !prepared.cover || existing.cover.url !== prepared.cover.url
+  prepared.ogUrl = await ensureOgCard(id, prepared, coverChanged)
   const { book } = await api<{ book: Book }>(`/api/books/${encodeURIComponent(id)}`, {
     method: 'POST',
     body: JSON.stringify(prepared),

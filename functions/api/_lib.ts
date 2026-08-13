@@ -80,7 +80,7 @@ export async function bootstrapOpen(env: Env): Promise<boolean> {
 /* Asset helpers                                                       */
 /* ------------------------------------------------------------------ */
 
-const ALLOWED_ASSET_PREFIXES = ['books/', 'orders/', 'styles/']
+const ALLOWED_ASSET_PREFIXES = ['books/', 'orders/', 'styles/', 'og/']
 const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'svg'])
 const KEY_PATTERN = /^[a-z0-9-]+(\/[a-z0-9_.-]+)*\.(jpg|jpeg|png|webp|svg)$/i
 
