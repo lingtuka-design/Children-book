@@ -61,7 +61,7 @@ export const Route = createFileRoute('/order/')({ component: OrderRoute })
 function OrderRoute() {
   usePageMeta({
     title: 'Order a Custom Children\u2019s Book',
-    description: 'I fanu/fapa hmel ngei mai lanna naupang thawnthu bu, a chhunga thawnthu pawh i duh dan thlapa i thlan leh duan theih chu Order ve rawh le.',
+    description: 'I fanu/fapa hmel ngei mai lanna naupang thawnthu bu, a thawnthu pawh i duh dan thlapa i thlan leh duan theih chu Order ve rawh le.',
   })
 
   const styles = useStyles()

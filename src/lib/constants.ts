@@ -13,7 +13,7 @@ export const BOOK_PRICE = 1500
 export const PRICE_LABEL = '₹1,500'
 
 export const HERO_MESSAGE =
-  'I fanu/fapa hmel ngei mai lanna naupang thawnthu bu, a chhunga thawnthu pawh i duh dan thlapa i thlan leh duan theih chu Order ve rawh le.'
+  'I fanu/fapa hmel ngei mai lanna naupang thawnthu bu, a thawnthu pawh i duh dan thlapa i thlan leh duan theih chu Order ve rawh le.'
 
 export const PRODUCT = {
   id: 'book-24',
