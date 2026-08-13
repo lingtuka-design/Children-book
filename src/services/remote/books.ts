@@ -1,6 +1,6 @@
 import type { Book, BookDraft, BookPageAsset, BookSummary } from '../types'
 import { api, isRemoteAssetUrl, uploadAsset } from '../api'
-import { generateOgCard } from '@/lib/og'
+import { generateOgCover } from '@/lib/og'
 import { slugify } from '@/lib/utils'
 
 const coverCache = new Map<string, string>()
@@ -83,15 +83,15 @@ async function prepareDraft(prefix: string, draft: BookDraft): Promise<BookDraft
 }
 
 /**
- * Render the 1200×630 social card (cover + title + excerpt) and store it in
- * R2 so social platforms can preview the book. Best-effort: failures keep the
+ * Render the book cover as a standalone 3:4 PNG in R2 so social platforms
+ * can show just the cover as the thumbnail. Best-effort: failures keep the
  * previously stored card (or none).
  */
 async function ensureOgCard(id: string, draft: BookDraft, coverChanged: boolean): Promise<string | undefined> {
   if (!draft.cover || (!coverChanged && draft.ogUrl)) return draft.ogUrl
   try {
-    const png = await generateOgCard({ coverUrl: draft.cover.url, title: draft.title, description: draft.description })
-    const { url } = await uploadAsset(`og/${id}.png`, png)
+    const png = await generateOgCover({ coverUrl: draft.cover.url })
+    const { url } = await uploadAsset(`og/${id}-cover.jpg`, png)
     return url
   } catch {
     return draft.ogUrl

@@ -25,6 +25,8 @@ function BookDetailRoute() {
       book?.ogUrl && typeof window !== 'undefined'
         ? new URL(book.ogUrl, window.location.origin).href
         : undefined,
+    ogImageWidth: 1080,
+    ogImageHeight: 1440,
   })
 
   if (loading) {

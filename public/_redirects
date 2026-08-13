@@ -1,13 +1,15 @@
 # SPA fallback for Cloudflare Pages — all routes serve index.html.
-# Bare /admin and the no-trailing-slash /admin/orders + /admin/books are
-# pre-empted by (a) the pages.dev platform redirecting /admin to / once
-# Functions are used, and (b) stale edge-cached HTML from the project's
-# original Next.js deployment. Explicit 301 redirects are served from the
-# rules layer and bypass that stale cache, so each affected path is
-# redirected to its trailing-slash variant.
+# A handful of exact paths (/admin, /admin/orders, /admin/books, /books,
+# /order) are pre-empted by stale edge-cached HTML from the project's
+# original Next.js deployment, and /admin is additionally redirected by the
+# pages.dev platform once Functions are used. Explicit 301 redirects are
+# served from the rules layer and bypass that stale cache, so each affected
+# path is redirected to its trailing-slash variant.
 /admin /admin/ 301
 /admin/orders /admin/orders/ 301
 /admin/books /admin/books/ 301
+/books /books/ 301
+/order /order/ 301
 /admin/ /index.html 200
 /admin/* /index.html 200
 /* /index.html 200

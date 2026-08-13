@@ -4,6 +4,8 @@ export interface PageMeta {
   title: string
   description?: string
   ogImage?: string
+  ogImageWidth?: number
+  ogImageHeight?: number
 }
 
 const SITE_NAME = 'Wonder Pages'
@@ -30,9 +32,13 @@ export function usePageMeta(meta: PageMeta): void {
     setMeta('property', 'og:title', meta.title)
     setMeta('property', 'og:site_name', SITE_NAME)
     setMeta('property', 'og:type', 'website')
-    if (meta.ogImage) setMeta('property', 'og:image', meta.ogImage)
+    if (meta.ogImage) {
+      setMeta('property', 'og:image', meta.ogImage)
+      if (meta.ogImageWidth) setMeta('property', 'og:image:width', String(meta.ogImageWidth))
+      if (meta.ogImageHeight) setMeta('property', 'og:image:height', String(meta.ogImageHeight))
+    }
     return () => {
       document.title = prevTitle
     }
-  }, [meta.title, meta.description, meta.ogImage])
+  }, [meta.title, meta.description, meta.ogImage, meta.ogImageWidth, meta.ogImageHeight])
 }

@@ -1,7 +1,7 @@
 import { api, uploadAsset } from '../api'
 import type { BookPageAsset } from '../types'
 import { SAMPLE_BOOKS, generateSampleAssets } from '@/lib/sampleArt'
-import { generateOgCard } from '@/lib/og'
+import { generateOgCover } from '@/lib/og'
 import { svgDataUrl } from '@/lib/images'
 import { defaultRemoteStyles } from './styles'
 
@@ -56,11 +56,11 @@ export async function remoteSeedIfEmpty(): Promise<void> {
 
     let ogUrl: string | undefined
     try {
-      const png = await generateOgCard({ coverUrl: coverUpload.url, title: spec.title, description: spec.description })
-      const uploaded = await uploadAsset(`og/${slug}.png`, png)
+      const png = await generateOgCover({ coverUrl: coverUpload.url })
+      const uploaded = await uploadAsset(`og/${slug}-cover.jpg`, png)
       ogUrl = uploaded.url
     } catch (err) {
-      console.warn('[seed] og card failed for', slug, err)
+      console.warn('[seed] og cover failed for', slug, err)
     }
 
     await api('/api/books', {
