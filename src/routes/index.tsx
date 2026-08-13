@@ -9,7 +9,7 @@ import { ErrorBanner } from '@/components/ui/Fields'
 import { useBooks } from '@/services/hooks'
 import { usePageMeta } from '@/lib/seo'
 import { HERO_MESSAGE, PAGE_SIZE } from '@/lib/constants'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 export const Route = createFileRoute('/')({ component: HomeRoute })
 
@@ -21,9 +21,18 @@ function HomeRoute() {
   const { data: books, loading, error, reload } = useBooks()
   const [page, setPage] = useState(1)
 
-  const pageCount = Math.max(1, Math.ceil((books?.length ?? 0) / PAGE_SIZE))
+  /* Top-featured books are placed first in the Latest section (each group
+     stays newest-first, matching the order from the service). */
+  const latest = useMemo(() => {
+    if (!books) return []
+    const featured = books.filter((b) => b.featured)
+    const rest = books.filter((b) => !b.featured)
+    return [...featured, ...rest]
+  }, [books])
+
+  const pageCount = Math.max(1, Math.ceil(latest.length / PAGE_SIZE))
   const safePage = Math.min(page, pageCount)
-  const visible = books?.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE) ?? []
+  const visible = latest.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE) ?? []
 
   return (
     <PublicLayout>
