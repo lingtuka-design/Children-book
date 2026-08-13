@@ -1,4 +1,4 @@
-# Logs
+﻿# Logs
 logs
 *.log
 npm-debug.log*
@@ -26,4 +26,5 @@ dist-ssr
 # Router plugin cache
 .tanstack
 
-# Wrangler local build artifacts.wrangler
+# Wrangler local build artifacts
+.wrangler
