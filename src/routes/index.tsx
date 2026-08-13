@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { createFileRoute } from '@tanstack/react-router'
-import { ArrowRight, BookHeart, Sparkles, Users } from 'lucide-react'
+import { ArrowRight, BookHeart, Users } from 'lucide-react'
 import { PublicLayout } from '@/components/layout/PublicLayout'
 import { BookGrid } from '@/components/books/BookCard'
 import { Pagination } from '@/components/books/Pagination'
@@ -39,8 +39,7 @@ function HomeRoute() {
           }}
         />
         <div className="container-site relative py-16 text-center sm:py-24">
-          <span className="animate-fade-up inline-flex items-center gap-1.5 rounded-full border border-coral-100 bg-coral-50 px-4 py-1.5 text-sm font-bold text-coral-600">
-            <Sparkles className="size-4" aria-hidden="true" />
+          <span className="animate-fade-up inline-flex items-center rounded-full border border-coral-100 bg-coral-50 px-4 py-1.5 text-sm font-bold text-coral-600">
             Hand-illustrated personalised storybooks
           </span>
           <h1 className="heading-display animate-fade-up mx-auto mt-6 max-w-3xl text-4xl leading-tight sm:text-5xl" style={{ animationDelay: '80ms' }}>
